@@ -6,8 +6,10 @@ authors = [
     {name = "Kirill Batrakov",email = "dl9ceb9@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = "^3.12"
 dependencies = [
+    "fastapi (>=0.117.1,<0.118.0)",
+    "uvicorn (>=0.37.0,<0.38.0)",
 ]
 
 
