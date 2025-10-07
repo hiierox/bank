@@ -2,7 +2,8 @@
 
 ```bash
 poetry install --no-root
-poetry run uvicorn src.app.service:app 
+export PYTHONPATH=$pwd:src
+poetry run uvicorn app.service:app 
 ```
 
 Документация доступна по адресу
@@ -10,10 +11,7 @@ poetry run uvicorn src.app.service:app
 
 
 # Запуск тестов
-Временное решение
 
 ```bash
-eval $(poetry env activate)
-export PYTHONPATH=$pwd:src
-pytest
+poetry run pytest
 ```

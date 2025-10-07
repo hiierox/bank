@@ -1,13 +1,16 @@
-from pydantic import BaseModel, validator
+import re
+
+from pydantic import BaseModel, field_validator
 
 
 class NumberRequest(BaseModel):
     phone_number: str
 
-    @validator("phone_number")
-    def validate_phone_number(cls, value):
-        if not value.isdigit() or len(value) != 11 or value[0] != "7":
-            raise ValueError("Wrong number format")
+    @field_validator('phone_number')
+    @classmethod
+    def validate_phone_number(cls, value: str) -> str:
+        if not re.fullmatch(r'^7\d{10}$', value):
+            raise ValueError('Wrong number format')
         return value
 
 

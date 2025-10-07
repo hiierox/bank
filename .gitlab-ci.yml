@@ -1,0 +1,58 @@
+image: python:3.12-slim
+
+stages:
+  - linting
+  - type-checking
+  - testing
+
+
+.base:
+  tags:
+    - docker
+  before_script:
+    - export PYTHONPATH="$CI_PROJECT_DIR/src:$PYTHONPATH"
+    - export MYPYPATH="$CI_PROJECT_DIR/src:$MYPYPATH"
+    - pip install poetry
+    - poetry install --no-root
+  rules:
+    - changes:
+      - "**/*.py"
+      - ".gitlab-ci.yml"
+      - "poetry.lock"
+      when: on_success
+    - changes:
+      - "**.md"
+      when: never
+    - when: never
+
+
+linting:
+  extends: .base
+  stage: linting
+  script:
+    - poetry run ruff check src/
+
+
+mypy:
+  extends: .base
+  stage: type-checking
+  script:
+    - poetry run mypy src/
+
+
+tests:
+  extends: .base
+  stage: testing
+  script:
+    - poetry run pytest
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+
+
+cache:
+  key:
+    files:
+      - poetry.lock
+    prefix: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - root/.cache/pypoetry
+    - root/.cache/pip
