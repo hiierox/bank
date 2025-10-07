@@ -1,4 +1,5 @@
-from app.api.products.schemas import Product
+from typing import Any
+
 pioneer_products = [
                     {
                     'name': 'Кредит Базовый',
@@ -22,8 +23,8 @@ class ProductRepository:
     """
     Репозиторий продуктов для клиентов
     """
-    
-    async def get_pioneer_products(self) -> list[Product]:
+
+    async def get_pioneer_products(self) -> list[dict[str, Any]]:
         """
         Возвращает список продуктов для новых клиентов
         """

@@ -1,4 +1,5 @@
 import pytest
+
 from app.repository import product_repo
 
 
@@ -10,9 +11,9 @@ async def test_get_pioneer_products_success():
 
     assert isinstance(result, list)
     assert len(result) > 0
-    assert 'name' in result[0] 
+    assert 'name' in result[0]
     assert 'amount' in result[0]
-    assert 'percentage' in result[0] 
+    assert 'percentage' in result[0]
 
 
 
@@ -24,4 +25,3 @@ async def test_get_pioneer_products_failure(monkeypatch):
     result = await repo.get_pioneer_products()
 
     assert result == []
-    
