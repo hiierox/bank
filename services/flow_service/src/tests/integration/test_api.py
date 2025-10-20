@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.repository import client_repo
+from app.repository import client_repo, product_repo
 from app.service import app
 
 
@@ -26,13 +26,14 @@ async def test_case_pioneer_then_repeater(client):
     assert response_data['flow_type'] == 'pioneer'
     assert len(response_data['available_products']) > 0
     assert phone_data['phone_number'] in client_repo.phone_numbers_db
+    assert response_data['available_products'] == product_repo.PIONEER_PRODUCTS
 
     response = client.post('api/products', json=phone_data)
 
     assert response.status_code == 200
     response_data = response.json()
     assert response_data['flow_type'] == 'repeater'
-    assert response_data['available_products'] == []
+    assert response_data['available_products'] == product_repo.REPEATER_PRODUCTS
 
 
 

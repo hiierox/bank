@@ -20,7 +20,7 @@ async def test_get_pioneer_products_success():
 @pytest.mark.asyncio
 async def test_get_pioneer_products_failure(monkeypatch):
     repo = product_repo.ProductRepository()
-    monkeypatch.setattr(product_repo, 'pioneer_products', [])
+    monkeypatch.setattr(product_repo, 'PIONEER_PRODUCTS', [])
 
     result = await repo.get_pioneer_products()
 
