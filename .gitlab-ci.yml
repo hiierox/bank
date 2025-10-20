@@ -10,15 +10,12 @@ stages:
   tags:
     - docker
   before_script:
-    - export PYTHONPATH="$CI_PROJECT_DIR/src:$PYTHONPATH"
-    - export MYPYPATH="$CI_PROJECT_DIR/src:$MYPYPATH"
     - pip install poetry
-    - poetry install --no-root
   rules:
     - changes:
       - "**/*.py"
       - ".gitlab-ci.yml"
-      - "poetry.lock"
+      - "services/**/poetry.lock"
       when: on_success
     - changes:
       - "**.md"
@@ -26,24 +23,58 @@ stages:
     - when: never
 
 
-linting:
+linting_flow:
   extends: .base
   stage: linting
   script:
+    - cd services/flow_service
+    - poetry install --no-root
     - poetry run ruff check src/
 
 
-mypy:
+mypy_flow:
   extends: .base
   stage: type-checking
   script:
+    - cd services/flow_service
+    - poetry install --no-root
     - poetry run mypy src/
 
 
-tests:
+tests_flow:
   extends: .base
   stage: testing
   script:
+    - cd services/flow_service
+    - poetry install --no-root
+    - poetry run pytest
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+
+
+linting_scoring:
+  extends: .base
+  stage: linting
+  script:
+    - cd services/scoring
+    - poetry install --no-root
+    - poetry run ruff check src/
+
+
+mypy_scoring:
+  extends: .base
+  stage: type-checking
+  script:
+    - cd services/scoring
+    - poetry install --no-root
+    - poetry run mypy src/
+
+
+tests_scoring:
+  extends: .base
+  stage: testing
+  script:
+    - cd services/scoring
+    - poetry install --no-root
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
 

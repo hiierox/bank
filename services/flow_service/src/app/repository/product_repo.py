@@ -2,19 +2,19 @@ from typing import Any
 
 pioneer_products = [
                     {
-                    'name': 'Кредит Базовый',
-                    'amount': 'от 10 000 до 20 000',
-                    'percentage': '15%'
+                    'name': 'MicroLoan',
+                    'amount': '30000',
+                    'percentage': '15'
                     },
                     {
-                    'name': 'Кредит Средний',
-                    'amount': 'от 50 000 до 100 000',
-                    'percentage': '12%'
+                    'name': 'QuickMoney',
+                    'amount': '60000',
+                    'percentage': '10'
                     },
                     {
-                    'name': 'Кредит Большой',
-                    'amount': 'от 100 000 до 1 000 000',
-                    'percentage': '10%'
+                    'name': 'ConsumerLoan',
+                    'amount': '120000',
+                    'percentage': '10'
                     }
                 ]
 
