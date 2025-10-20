@@ -17,7 +17,7 @@ class FlowService:
         if await self.client_repo.is_number_known(phone_number):
             return {
                 'flow_type': 'repeater',
-                'available_products': []
+                'available_products': await self.product_repo.get_repeater_products()
             }
         await self.client_repo.add_number(phone_number)
         return {

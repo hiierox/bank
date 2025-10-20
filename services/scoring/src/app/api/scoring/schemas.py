@@ -1,21 +1,16 @@
-import re
+from datetime import date
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+PHONE_REG = r'^7\d{10}$'
 
 
 class UserData(BaseModel):
-    phone: str
+    phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
     age: int
     monthly_income: int
     employment_type: str
     has_property: bool
-
-    @field_validator('phone')
-    @classmethod
-    def validate_phone(cls, value: str) -> str:
-        if not re.fullmatch(r'^7\d{10}$', value):
-            raise ValueError('Wrong number format')
-        return value
 
     @field_validator('monthly_income')
     @classmethod
@@ -30,8 +25,13 @@ class Product(BaseModel):
     interest_rate_daily: float
 
 
-class ScoringRequest(BaseModel):
+class ScoringRequestPioneer(BaseModel):
     user_data: UserData
+    products: list[Product]
+
+
+class ScoringRequestRepeater(BaseModel):
+    phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
     products: list[Product]
 
 
@@ -39,3 +39,16 @@ class ResponseModel(BaseModel):
     decision: str
     product: Product | None
 
+
+class CreditHistoryItem(BaseModel):
+    product_name: str
+    amount: int
+    issue_date: date
+    term_days: int
+    status: str
+    close_date: date | None = None
+
+
+class ClientProfile(BaseModel):
+    user_data: UserData
+    credit_history: list[CreditHistoryItem] = []
