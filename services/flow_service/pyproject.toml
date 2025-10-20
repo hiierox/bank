@@ -92,6 +92,7 @@ multiline-quotes = "double"
 
 
 [tool.mypy]
+mypy_path = ["src"]
 python_version = "3.12"
 strict = true
 warn_return_any = true
