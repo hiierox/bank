@@ -8,7 +8,7 @@ stages:
 
 .base:
   tags:
-    - docker
+    - gitlab-org-docker
   before_script:
     - pip install poetry
   rules:
@@ -74,6 +74,34 @@ tests_scoring:
   stage: testing
   script:
     - cd services/scoring
+    - poetry install --no-root
+    - poetry run pytest
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+
+
+linting_data:
+  extends: .base
+  stage: linting
+  script:
+    - cd services/user-data-service
+    - poetry install --no-root
+    - poetry run ruff check src/
+
+
+mypy_data:
+  extends: .base
+  stage: type-checking
+  script:
+    - cd services/user-data-service
+    - poetry install --no-root
+    - poetry run mypy src/
+
+
+tests_data:
+  extends: .base
+  stage: testing
+  script:
+    - cd services/user-data-service
     - poetry install --no-root
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
