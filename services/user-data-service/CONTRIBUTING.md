@@ -2,12 +2,13 @@
 
 ```bash
 poetry install --no-root
-export PYTHONPATH=$pwd:src
-poetry run uvicorn app.service:app 
 ```
+Запуск из корня проекта - services/flow_service 
+`sh run.sh`
+
 
 Документация доступна по адресу
-`http://127.0.0.1:8000/docs`
+`http://127.0.0.1:8002/docs`
 
 Тестовые данные автоматически генерируются подходящие.
 Для случаев, когда нужно отправить отдельно либо profile, либо loan_entry нужно  

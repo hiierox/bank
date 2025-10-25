@@ -1,0 +1,6 @@
+data_service:
+  base_url: "http://localhost:8002"
+  timeout: 5
+  retries:
+    max_attempts: 2
+    delay: 1

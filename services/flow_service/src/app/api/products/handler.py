@@ -1,23 +1,29 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from httpx import ConnectError, HTTPStatusError
 
+from app.dependencies import get_flow_service
 from app.logic.flow_service import FlowService
-from app.repository.client_repo import ClientRepository
-from app.repository.product_repo import ProductRepository
 
 from .schemas import NumberRequest, ResponseModel
-
-client_repo = ClientRepository()
-product_repo = ProductRepository()
-flow_service = FlowService(client_repo, product_repo)
 
 router = APIRouter()
 
 
 @router.post('/', response_model=ResponseModel)
-async def get_product(request: NumberRequest) -> dict[str, Any]:
+async def get_product(
+    request: NumberRequest,
+    flow_service: FlowService = Depends(get_flow_service)
+) -> dict[str, Any]:
     """
     Возвращает клиенту список доступных ему продуктов.
     """
-    return await flow_service.flow_type_selection(request.phone_number)
+    try:
+        return await flow_service.flow_type_selection(request.phone_number)
+    except HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail='Integration Error') from e
+    except ConnectError as e:
+        raise HTTPException(status_code=503, detail='Connect Error') from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Internal Server Error') from e
