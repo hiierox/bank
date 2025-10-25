@@ -1,166 +1,127 @@
-from unittest.mock import AsyncMock
-from fastapi import HTTPException
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
 import pytest
+
+from app.config.config import Config
+from app.core.constants import REJECT_RESPONSE
+from app.core.custom_exceptions import LoanAlreadyExistsError, UserNotFoundError
+from app.logic.scoring import UserScoring
 from tests.unit.mock_scoring_data import (
-    MOCK_PRODUCT_ADVANTAGE,
-    MOCK_PRODUCT_LOYALTY,
-    MOCK_PRODUCT_PRIMECREDIT,
     MOCK_PRODUCTS_PIONEER,
     MOCK_PRODUCTS_REPEATER,
-    MOCK_TEST_PROFILE_BAD_BUT_GOOD_HISTORY,
-    MOCK_TEST_PROFILE_FULL_POINTS,
-    MOCK_TEST_PROFILE_LOW_AGE,
-    MOCK_TEST_PROFILE_LOW_POINTS,
-    MOCK_TEST_PROFILE_LOYALTY,
-    MOCK_TEST_PROFILE_OPEN_CREDIT,
-    MOCK_TEST_PROFILE_SUCCESS,
-    MOCK_USER_DATA_FAIL,
-    MOCK_USER_DATA_REJECT,
-    MOCK_USER_DATA_SUCCESS,
-    TWO_PRODUCTS,
-    FULL_PACK_PRODUCTS
+    MOCK_REPEATER_PROFILE_JSON,
+    MOCK_USER_DATA_PIONEER_ACCEPTED,
+    MOCK_USER_DATA_PIONEER_REJECTED_SCORE,
+    MOCK_USER_DATA_PIONEER_REJECTED_STOP_FACTOR,
 )
 
-from app.external_service.get_credit_status_service import get_credit_status
-from app.logic.scoring import UserScoring
-from app.repository.client_repo import ClientProfileRepository
-from app.core.custom_exceptions import UserNotFoundError
-
 
 @pytest.fixture
-def user_scoring_fixture():
-    mock_client_repo = AsyncMock(spec=ClientProfileRepository)
-    scoring_service = UserScoring(mock_client_repo)
-    return mock_client_repo, scoring_service
-
+def config_fixture() -> Config:
+    return Config.model_validate({
+        'data_service': {
+            'base_url': 'http://test-data-service', 'timeout': 1,
+            'retries': {'max_attempts': 2, 'delay': 0}
+        }
+    })
 
 @pytest.fixture
-def get_credit_status_fixture():
-    get_credit_status = AsyncMock()
-    return get_credit_status
+def scoring_service_fixture(config_fixture):
+    mock_http_client = AsyncMock(spec=httpx.AsyncClient)
+    service = UserScoring(client=mock_http_client, config=config_fixture)
+    return service, mock_http_client
 
 
 @pytest.mark.asyncio
-async def test_user_scoring_pioneer_accepted_quickmoney(user_scoring_fixture):
-    client_repo, scoring_service = user_scoring_fixture
+async def test_pioneer_accepted_and_saved(scoring_service_fixture):
+    service, mock_client = scoring_service_fixture
+    mock_response = MagicMock(spec=httpx.Response, status_code=201)
+    mock_client.put.return_value = mock_response
 
-    result = await scoring_service.user_scoring_pioneer(
-        user_data=MOCK_USER_DATA_SUCCESS,
-        products=MOCK_PRODUCTS_PIONEER
+    result = await service.user_scoring_pioneer(MOCK_USER_DATA_PIONEER_ACCEPTED, MOCK_PRODUCTS_PIONEER)
+
+    assert result['decision'] == 'accepted'
+    assert result['product'] is not None
+    mock_client.put.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('user_data', [
+    MOCK_USER_DATA_PIONEER_REJECTED_SCORE,
+    MOCK_USER_DATA_PIONEER_REJECTED_STOP_FACTOR,
+])
+async def test_pioneer_rejected_before_scoring(scoring_service_fixture, user_data):
+    service, mock_client = scoring_service_fixture
+
+    result = await service.user_scoring_pioneer(user_data, MOCK_PRODUCTS_PIONEER)
+
+    assert result == REJECT_RESPONSE
+    mock_client.put.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch('app.logic.scoring.get_credit_status', return_value='closed')
+async def test_repeater_accepted_and_updated(mock_get_credit_status, scoring_service_fixture):
+    service, mock_client = scoring_service_fixture
+
+    mock_get_response = MagicMock(spec=httpx.Response, status_code=200)
+    mock_get_response.json.return_value = MOCK_REPEATER_PROFILE_JSON
+    mock_put_response = MagicMock(spec=httpx.Response, status_code=200)
+    mock_client.get.return_value = mock_get_response
+    mock_client.put.return_value = mock_put_response
+
+    result = await service.user_scoring_repeater(MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER)
+
+    assert result['decision'] == 'accepted'
+    assert result['product'] is not None
+    mock_client.get.assert_called_once()
+    mock_client.put.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_repeater_user_not_found(scoring_service_fixture):
+    service, mock_client = scoring_service_fixture
+    mock_response = MagicMock(spec=httpx.Response, status_code=404)
+    mock_client.get.return_value = mock_response
+
+    with pytest.raises(UserNotFoundError):
+        await service.user_scoring_repeater('71234567890', MOCK_PRODUCTS_REPEATER)
+
+
+@pytest.mark.asyncio
+@patch('app.logic.scoring.get_credit_status', return_value='closed')
+async def test_repeater_update_fails(mock_get_credit_status, scoring_service_fixture):
+    service, mock_client = scoring_service_fixture
+
+    mock_get_response = MagicMock(spec=httpx.Response, status_code=200)
+    mock_get_response.json.return_value = MOCK_REPEATER_PROFILE_JSON
+
+    mock_put_response = MagicMock(spec=httpx.Response, status_code=500)
+    mock_put_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        'Server Error', request=MagicMock(), response=mock_put_response
     )
 
-    assert result['decision'] == 'accepted'
-    assert result['product'].model_dump(
-    ) == MOCK_PRODUCTS_PIONEER[1].model_dump()
-    client_repo.save_user_profile.assert_called_once()
+    mock_client.get.return_value = mock_get_response
+    mock_client.put.return_value = mock_put_response
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await service.user_scoring_repeater(MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER)
 
 
 @pytest.mark.asyncio
-async def test_user_scoring_pioneer_rejected_low_score(user_scoring_fixture):
-    client_repo, scoring_service = user_scoring_fixture
+@patch('app.logic.scoring.get_credit_status', return_value='closed')
+async def test_repeater_loan_already_exists(mock_get_credit_status, scoring_service_fixture):
+    service, mock_client = scoring_service_fixture
 
-    result = await scoring_service.user_scoring_pioneer(user_data=MOCK_USER_DATA_REJECT,
-                                                        products=MOCK_PRODUCTS_PIONEER)
+    mock_get_response = MagicMock(spec=httpx.Response, status_code=200)
+    mock_get_response.json.return_value = MOCK_REPEATER_PROFILE_JSON
 
-    assert result['decision'] == 'rejected'
-    assert result['product'] is None
-    client_repo.save_user_profile.assert_not_called()
+    mock_put_response = MagicMock(spec=httpx.Response, status_code=422)
 
+    mock_client.get.return_value = mock_get_response
+    mock_client.put.return_value = mock_put_response
 
-@pytest.mark.asyncio
-async def test_user_scoring_pioneer_rejected_fail(user_scoring_fixture):
-    client_repo, scoring_service = user_scoring_fixture
+    with pytest.raises(LoanAlreadyExistsError):
+        await service.user_scoring_repeater(MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER)
 
-    result = await scoring_service.user_scoring_pioneer(user_data=MOCK_USER_DATA_FAIL,
-                                                        products=MOCK_PRODUCTS_PIONEER)
-
-    assert result['decision'] == 'rejected'
-    assert result['product'] is None
-    client_repo.save_user_profile.assert_not_called()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('user_profile, user_product, products',
-                         [
-                             pytest.param(
-                                 MOCK_TEST_PROFILE_LOYALTY,
-                                 MOCK_PRODUCT_LOYALTY,
-                                 FULL_PACK_PRODUCTS,
-                                 id='return value: Loyalty'
-                             ),
-                             pytest.param(
-                                 MOCK_TEST_PROFILE_SUCCESS,
-                                 MOCK_PRODUCT_ADVANTAGE,
-                                 FULL_PACK_PRODUCTS,
-                                 id='return value: Advantage'
-                             ),
-                             pytest.param(
-                                 MOCK_TEST_PROFILE_BAD_BUT_GOOD_HISTORY,
-                                 MOCK_PRODUCT_PRIMECREDIT,
-                                 FULL_PACK_PRODUCTS,
-                                 id='return value: Prime'
-                             ),
-                             pytest.param(
-                                 MOCK_TEST_PROFILE_FULL_POINTS,
-                                 MOCK_PRODUCT_ADVANTAGE,
-                                 TWO_PRODUCTS,
-                                 id='return value: Advantage'
-                             )
-                         ]
-                         )
-async def test_user_scoring_repeater_accepted(user_scoring_fixture,
-                                              get_credit_status_fixture,
-                                              user_profile,
-                                              user_product,
-                                              products):
-    phone = '79123456789'
-    client_repo, scoring_service = user_scoring_fixture
-    client_repo.get_user_profile.return_value = user_profile
-    get_credit_status_fixture.return_value = 'closed'
-
-    result = await scoring_service.user_scoring_repeater(phone, products)
-
-    assert result['decision'] == 'accepted'
-    assert result['product'] == user_product[0]
-    client_repo.save_user_credit_history.assert_called_once()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('user_profile', [
-                         (MOCK_TEST_PROFILE_LOW_AGE),
-                         (MOCK_TEST_PROFILE_LOW_POINTS),
-                         (MOCK_TEST_PROFILE_OPEN_CREDIT),
-                         ],
-                         ids=('low_age',
-                              'low_points',
-                              'last_credit_open_longer_6_months')
-
-                         )
-async def test_user_scoring_repeater_rejected(user_scoring_fixture,
-                                              get_credit_status_fixture,
-                                              user_profile,
-                                              ):
-    phone = '79123456789'
-    products = FULL_PACK_PRODUCTS
-    client_repo, scoring_service = user_scoring_fixture
-    client_repo.get_user_profile.return_value = user_profile
-    get_credit_status_fixture.return_value = 'open'
-
-    result = await scoring_service.user_scoring_repeater(phone, products)
-
-    assert result['decision'] == 'rejected'
-    assert result['product'] is None
-    client_repo.save_user_credit_history.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_user_scoring_repeater_not_found(user_scoring_fixture):
-    phone = '79123456789'
-    products = FULL_PACK_PRODUCTS
-    client_repo, scroing_service = user_scoring_fixture
-    client_repo.get_user_profile.return_value = None
-
-    with pytest.raises(UserNotFoundError) as e:
-        await scroing_service.user_scoring_repeater(phone, products)
-
-    client_repo.save_user_credit_history.assert_not_called()

@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -7,9 +8,9 @@ PHONE_REG = r'^7\d{10}$'
 
 class UserData(BaseModel):
     phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
-    age: int
-    monthly_income: int
-    employment_type: str
+    age: int = Field(..., ge=0, le=120)
+    monthly_income: int = Field(..., ge=0)
+    employment_type: Literal['full_time', 'freelance', 'unemployed']
     has_property: bool
 
     @field_validator('monthly_income')
@@ -20,8 +21,8 @@ class UserData(BaseModel):
 
 class Product(BaseModel):
     name: str
-    max_amount: int
-    term_days: int
+    max_amount: int = Field(..., gt=0)
+    term_days: int = Field(..., gt=0)
     interest_rate_daily: float
 
 
@@ -41,6 +42,7 @@ class ResponseModel(BaseModel):
 
 
 class CreditHistoryItem(BaseModel):
+    loan_id: str
     product_name: str
     amount: int
     issue_date: date
@@ -49,6 +51,19 @@ class CreditHistoryItem(BaseModel):
     close_date: date | None = None
 
 
-class ClientProfile(BaseModel):
-    user_data: UserData
-    credit_history: list[CreditHistoryItem] = []
+class UserProfileForDataService(BaseModel):
+    age: int = Field(..., ge=0, le=120)
+    monthly_income: int = Field(..., gt=0)
+    employment_type: Literal['full_time', 'freelance', 'unemployed']
+    has_property: bool
+
+class PutUserData(BaseModel):
+    phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
+    profile: UserProfileForDataService
+    loan_entry: CreditHistoryItem
+
+
+class GetUserProfileResponse(BaseModel):
+    phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
+    profile: UserProfileForDataService
+    history: list[CreditHistoryItem] = []

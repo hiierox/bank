@@ -1,48 +1,4 @@
-from datetime import date
-
-from app.api.scoring.schemas import ClientProfile, CreditHistoryItem, Product, UserData
-
-MOCK_USER_DATA_SUCCESS = UserData(
-    phone='79123456789',
-    age=25,
-    monthly_income=29999,
-    employment_type='full_time',
-    has_property=True
-)
-
-MOCK_USER_DATA_LOYALTY = UserData(
-    phone='79123456789',
-    age=25,
-    monthly_income=29999,
-    employment_type='full_time',
-    has_property=False
-)
-
-MOCK_USER_DATA_REJECT = UserData(
-    phone='79123456789',
-    age=25,
-    monthly_income=30000,
-    employment_type='freelance',
-    has_property=False
-)
-
-MOCK_USER_DATA_FAIL = UserData(
-    phone='79123456789',
-    age=15,
-    monthly_income=45000,
-    employment_type='freelance',
-    has_property=False
-)
-
-
-MOCK_PRODUCTS_PIONEER = [
-    Product(name='MicroLoan', max_amount=3000000,
-            term_days=30, interest_rate_daily=2.0),
-    Product(name='QuickMoney', max_amount=1500000,
-            term_days=15, interest_rate_daily=2.5),
-    Product(name='ConsumerLoan', max_amount=4500000,
-            term_days=15, interest_rate_daily=2.5)
-]
+from app.api.scoring.schemas import Product, UserData
 
 MOCK_PRODUCTS_REPEATER = [Product(name='LoyaltyLoan', max_amount=30000,
                                   term_days=100, interest_rate_daily=1.6),
@@ -50,66 +6,59 @@ MOCK_PRODUCTS_REPEATER = [Product(name='LoyaltyLoan', max_amount=30000,
                                   term_days=100, interest_rate_daily=1.4),
                           Product(name='PrimeCredit', max_amount=90000,
                                   term_days=100, interest_rate_daily=1.2)]
-FULL_PACK_PRODUCTS = MOCK_PRODUCTS_REPEATER
-TWO_PRODUCTS = [Product(name='LoyaltyLoan', max_amount=30000,
-                        term_days=100, interest_rate_daily=1.6),
-                Product(name='AdvantagePlus', max_amount=60000,
-                        term_days=100, interest_rate_daily=1.4)]
 
-MOCK_CREDIT_HISTORY_GOOD = [CreditHistoryItem(
-    product_name='QuickMoney',
-    amount=30000000,
-    issue_date=date(2023, 12, 12),
-    term_days=30,
-    status='closed',
-    close_date=date(2024, 12, 12)
-)]
 
-MOCK_CREDIT_HISTORY_NORM = [CreditHistoryItem(
-    product_name='QuickMoney',
-    amount=3000000,
-    issue_date=date(2025, 12, 12),
-    term_days=30,
-    status='closed',
-    close_date=date(2025, 12, 12)
-)]
-
-MOCK_CREDIT_HISTORY_BAD = [CreditHistoryItem(
-    product_name='QuickMoney',
-    amount=3000000,
-    issue_date=date(2024, 12, 12),
-    term_days=30,
-    status='open',
-    close_date=None
-)]
-
-MOCK_TEST_PROFILE_SUCCESS = ClientProfile(
-    user_data=MOCK_USER_DATA_SUCCESS, credit_history=MOCK_CREDIT_HISTORY_NORM)
-
-MOCK_TEST_PROFILE_LOYALTY = ClientProfile(
-    user_data=MOCK_USER_DATA_LOYALTY, credit_history=MOCK_CREDIT_HISTORY_NORM)
-
-MOCK_TEST_PROFILE_BAD_BUT_GOOD_HISTORY = ClientProfile(
-    user_data=MOCK_USER_DATA_REJECT, credit_history=MOCK_CREDIT_HISTORY_GOOD)
-
-MOCK_TEST_PROFILE_LOW_AGE = ClientProfile(
-    user_data=MOCK_USER_DATA_FAIL, credit_history=MOCK_CREDIT_HISTORY_NORM)
-
-MOCK_TEST_PROFILE_LOW_POINTS = ClientProfile(
-    user_data=MOCK_USER_DATA_REJECT, credit_history=MOCK_CREDIT_HISTORY_NORM)
-
-MOCK_TEST_PROFILE_OPEN_CREDIT = ClientProfile(
-    user_data=MOCK_USER_DATA_SUCCESS, credit_history=MOCK_CREDIT_HISTORY_BAD)
-
-MOCK_TEST_PROFILE_FULL_POINTS = ClientProfile(
-    user_data=MOCK_USER_DATA_SUCCESS, credit_history=MOCK_CREDIT_HISTORY_NORM
+MOCK_USER_DATA_PIONEER_ACCEPTED = UserData(
+    phone='79112223344',
+    age=30,
+    monthly_income=5000000,
+    employment_type='full_time',
+    has_property=True
 )
 
-MOCK_PRODUCT_LOYALTY = [Product(name='LoyaltyLoan', max_amount=30000,
-                                term_days=100, interest_rate_daily=1.6)]
+MOCK_USER_DATA_PIONEER_REJECTED_SCORE = UserData(
+    phone='79223334455',
+    age=20,
+    monthly_income=20000,
+    employment_type='freelance',
+    has_property=False
+)
 
-MOCK_PRODUCT_ADVANTAGE = [Product(name='AdvantagePlus', max_amount=60000,
-                                  term_days=100, interest_rate_daily=1.4)]
 
-MOCK_PRODUCT_PRIMECREDIT = [Product(name='PrimeCredit', max_amount=90000,
-                                    term_days=100, interest_rate_daily=1.2)]
+MOCK_USER_DATA_PIONEER_REJECTED_STOP_FACTOR = UserData(
+    phone='79334445566',
+    age=17,
+    monthly_income=10000000,
+    employment_type='full_time',
+    has_property=True
+)
+
+
+MOCK_REPEATER_PROFILE_JSON = {
+    'phone': '79556667788',
+    'profile': {
+        'age': 45,
+        'monthly_income': 10000000,
+        'employment_type': 'full_time',
+        'has_property': True,
+    },
+    'history': [
+        {
+            'loan_id': 'loan_1', 'product_name': 'OldCredit', 'amount': 5000000,
+            'issue_date': '2023-01-01', 'term_days': 30, 'status': 'closed', 'close_date': '2023-02-01'
+        }
+    ]
+}
+
+
+MOCK_PRODUCTS_PIONEER = [
+    Product(name='MicroLoan', max_amount=30000, term_days=30, interest_rate_daily=1.0),
+    Product(name='QuickMoney', max_amount=60000, term_days=60, interest_rate_daily=0.8),
+    Product(name='ConsumerLoan', max_amount=120000, term_days=90, interest_rate_daily=0.5),
+]
+
+MOCK_PRODUCTS_REPEATER = [
+    Product(name='LoyaltyLoan', max_amount=500000, term_days=100, interest_rate_daily=0.4),
+    Product(name='AdvantagePlus', max_amount=1200000, term_days=120, interest_rate_daily=0.3),
+    Product(name='PrimeCredit', max_amount=5000000, term_days=180, interest_rate_daily=0.2),
+]
