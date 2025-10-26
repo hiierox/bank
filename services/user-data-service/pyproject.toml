@@ -10,6 +10,9 @@ requires-python = ">3.11, <3.13"
 dependencies = [
     "uvicorn (>=0.37.0,<0.38.0)",
     "fastapi (>=0.119.0,<0.120.0)",
+    "aiokafka (>=0.12.0,<0.13.0)",
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "types-pyyaml (>=6.0.12.20250915,<7.0.0.0)",
 ]
 
 
@@ -116,3 +119,8 @@ explicit_package_bases = true
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+
+[[tool.mypy.overrides]]
+module = "aiokafka.*"
+ignore_missing_imports = true
