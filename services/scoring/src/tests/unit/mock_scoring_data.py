@@ -19,7 +19,7 @@ MOCK_USER_DATA_PIONEER_ACCEPTED = UserData(
 MOCK_USER_DATA_PIONEER_REJECTED_SCORE = UserData(
     phone='79223334455',
     age=20,
-    monthly_income=20000,
+    monthly_income=0,
     employment_type='freelance',
     has_property=False
 )

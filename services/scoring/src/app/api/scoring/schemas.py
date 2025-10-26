@@ -59,7 +59,7 @@ class UserProfileForDataService(BaseModel):
 
 class PutUserData(BaseModel):
     phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
-    profile: UserProfileForDataService
+    profile: UserProfileForDataService | None = None
     loan_entry: CreditHistoryItem
 
 

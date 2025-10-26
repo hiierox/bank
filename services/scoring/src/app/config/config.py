@@ -15,8 +15,15 @@ class DataServiceConfig(BaseModel):
     retries: RetriesConfig
 
 
+class KafkaConfig(BaseModel):
+    bootstrap_servers: str
+    topic: str
+    request_timeout_ms: int
+
+
 class Config(BaseModel):
     data_service: DataServiceConfig
+    kafka: KafkaConfig
 
     @classmethod
     def from_yaml(cls, file_path: Path | str) -> 'Config':

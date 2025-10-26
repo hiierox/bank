@@ -4,12 +4,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
-from tenacity import (
-    AsyncRetrying,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_fixed,
-)
+from aiokafka.errors import KafkaError
 
 from app.api.scoring.schemas import (
     CreditHistoryItem,
@@ -30,25 +25,48 @@ from app.core.constants import (
     REJECT_RESPONSE,
     REPEATER_PRODUCTS_POINTS,
 )
-from app.core.custom_exceptions import LoanAlreadyExistsError, UserNotFoundError
+from app.core.custom_exceptions import UserNotFoundError
 from app.external_service.get_credit_status_service import get_credit_status
+from app.external_service.kafka_producer import KafkaProducerService
 
 logger = logging.getLogger(__name__)
 
 
 class UserScoring:
-    def __init__(self, client: httpx.AsyncClient, config: Config):
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        config: Config,
+        kafka_producer: KafkaProducerService
+    ):
         self.client = client
-        self.retryer = AsyncRetrying(
-            stop=stop_after_attempt(
-                config.data_service.retries.max_attempts + 1
-            ),
-            wait=wait_fixed(config.data_service.retries.delay),
-            retry=retry_if_exception_type(
-                (httpx.TimeoutException, httpx.HTTPStatusError)
-            ),
-            reraise=True
-        )
+        self.config = config
+        self.kafka_producer = kafka_producer
+
+    async def _send_kafka_event(
+        self,
+        event_type: str,
+        request_body: PutUserData
+    ) -> None:
+        """Формирует и отправляет событие в Kafka."""
+        profile_data = request_body.profile
+        phone = request_body.phone
+        loan_entry = request_body.loan_entry
+
+        message = {
+            'version': 1,
+            'occurred_at': datetime.now(tz=ZoneInfo('UTC')).isoformat(),
+            'phone': phone,
+            'event': event_type,
+            'profile': profile_data.model_dump(mode='json') if profile_data else None,
+            'history_entry': loan_entry.model_dump(mode='json')
+        }
+        try:
+            logger.info(f'Preparing to send kafka event: {event_type}')
+            await self.kafka_producer.send(key=phone, value=message)
+        except KafkaError:
+            logger.exception(f'Failed to send kafka event for phone {phone}')
+
 
     async def user_scoring_pioneer(
         self,
@@ -98,26 +116,14 @@ class UserScoring:
 
             request_body = await self.request_body_forming(
                 user_data.phone,
-                user_data,
-                best_eligible_product
+                best_eligible_product,
+                user_data
             )
-            try:
-                response = await self.client.put(
-                    '/user-data',
-                    json=request_body.model_dump(mode='json')
-                )
-                if response.status_code == 201:
-                    return {'decision': 'accepted', 'product': best_eligible_product}
-                else:  # noqa: RET505
-                    logger.error(
-                        f"""Save User Error:
-                        phone={user_data.phone},
-                        status_code={response.status_code},
-                        detail={response.text}"""
-                    )
-                    response.raise_for_status()
-            except Exception as e:
-                raise e
+            await self._send_kafka_event(
+                event_type='pioneer_accepter',
+                request_body=request_body
+            )
+            return {'decision': 'accepted', 'product': best_eligible_product}
 
         return REJECT_RESPONSE
 
@@ -215,44 +221,36 @@ class UserScoring:
 
             request_body = await self.request_body_forming(
                 phone,
-                user_profile,
                 best_eligible_product
             )
-            try:
-                response = await self.client.put(
-                    '/user-data',
-                    json=request_body.model_dump(mode='json')
-                )
-                if response.status_code == 422:
-                    raise LoanAlreadyExistsError
-                response.raise_for_status()
-                return {'decision': 'accepted', 'product': best_eligible_product}
-            except Exception as e:
-                logger.error(
-                    f"""Update User or Loan Error:
-                        phone={phone},
-                        status_code={response.status_code},
-                        detail={response.text}"""
-                )
-                raise e
+
+            await self._send_kafka_event(
+                event_type='repetaer_accepted',
+                request_body=request_body
+            )
+            return {'decision': 'accepted', 'product': best_eligible_product}
 
         return REJECT_RESPONSE
 
     async def request_body_forming(
         self,
         phone: str,
-        user_data: UserData,
-        best_eligible_product: Product
+        best_eligible_product: Product,
+        user_data: UserData | None = None,
     ) -> PutUserData:
-        profile = UserProfileForDataService(
-            age=user_data.age,
-            monthly_income=user_data.monthly_income,
-            employment_type=user_data.employment_type,
-            has_property=user_data.has_property
-        )
+        if user_data:
+            profile = UserProfileForDataService(
+                age=user_data.age,
+                monthly_income=user_data.monthly_income,
+                employment_type=user_data.employment_type,
+                has_property=user_data.has_property
+            )
+        else:
+            profile = None
+
         loan_entry = CreditHistoryItem(
             loan_id=f'loan_{phone}_{datetime.now(
-                tz=ZoneInfo('UTC')).strftime("%Y%m%d%H%M")}',
+                tz=ZoneInfo('UTC')).strftime("%Y%m%d%H%M%S")}',
             product_name=best_eligible_product.name,
             amount=best_eligible_product.max_amount,
             issue_date=datetime.now(

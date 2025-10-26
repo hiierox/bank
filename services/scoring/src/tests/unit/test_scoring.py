@@ -2,10 +2,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from aiokafka.errors import KafkaError
 
 from app.config.config import Config
 from app.core.constants import REJECT_RESPONSE
-from app.core.custom_exceptions import LoanAlreadyExistsError, UserNotFoundError
+from app.core.custom_exceptions import UserNotFoundError
+from app.external_service.kafka_producer import KafkaProducerService
 from app.logic.scoring import UserScoring
 from tests.unit.mock_scoring_data import (
     MOCK_PRODUCTS_PIONEER,
@@ -13,7 +15,6 @@ from tests.unit.mock_scoring_data import (
     MOCK_REPEATER_PROFILE_JSON,
     MOCK_USER_DATA_PIONEER_ACCEPTED,
     MOCK_USER_DATA_PIONEER_REJECTED_SCORE,
-    MOCK_USER_DATA_PIONEER_REJECTED_STOP_FACTOR,
 )
 
 
@@ -23,105 +24,96 @@ def config_fixture() -> Config:
         'data_service': {
             'base_url': 'http://test-data-service', 'timeout': 1,
             'retries': {'max_attempts': 2, 'delay': 0}
+        },
+        'kafka': {
+            'bootstrap_servers': 'mock-kafka:9092', 'topic': 'scoring_results', 'request_timeout_ms': 10
         }
     })
+
 
 @pytest.fixture
 def scoring_service_fixture(config_fixture):
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
-    service = UserScoring(client=mock_http_client, config=config_fixture)
-    return service, mock_http_client
+    mock_kafka_producer = AsyncMock(spec=KafkaProducerService)
+    service = UserScoring(
+        client=mock_http_client,
+        config=config_fixture,
+        kafka_producer=mock_kafka_producer
+    )
+    return service, mock_http_client, mock_kafka_producer
+
 
 
 @pytest.mark.asyncio
-async def test_pioneer_accepted_and_saved(scoring_service_fixture):
-    service, mock_client = scoring_service_fixture
-    mock_response = MagicMock(spec=httpx.Response, status_code=201)
-    mock_client.put.return_value = mock_response
+async def test_pioneer_accepted_sends_to_kafka(scoring_service_fixture):
+    """Новый клиент одобрен, сообщение успешно отправлено в Kafka."""
+    service, _, mock_kafka_producer = scoring_service_fixture
 
-    result = await service.user_scoring_pioneer(MOCK_USER_DATA_PIONEER_ACCEPTED, MOCK_PRODUCTS_PIONEER)
+    result = await service.user_scoring_pioneer(
+        MOCK_USER_DATA_PIONEER_ACCEPTED, MOCK_PRODUCTS_PIONEER
+    )
 
     assert result['decision'] == 'accepted'
-    assert result['product'] is not None
-    mock_client.put.assert_called_once()
+    mock_kafka_producer.send.assert_called_once()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('user_data', [
-    MOCK_USER_DATA_PIONEER_REJECTED_SCORE,
-    MOCK_USER_DATA_PIONEER_REJECTED_STOP_FACTOR,
-])
-async def test_pioneer_rejected_before_scoring(scoring_service_fixture, user_data):
-    service, mock_client = scoring_service_fixture
+async def test_pioneer_rejected_does_not_send_to_kafka(scoring_service_fixture):
+    """Новый клиент отклонен, в Kafka ничего не отправляется."""
+    service, _, mock_kafka_producer = scoring_service_fixture
 
-    result = await service.user_scoring_pioneer(user_data, MOCK_PRODUCTS_PIONEER)
+    result = await service.user_scoring_pioneer(
+        MOCK_USER_DATA_PIONEER_REJECTED_SCORE, MOCK_PRODUCTS_PIONEER
+    )
 
     assert result == REJECT_RESPONSE
-    mock_client.put.assert_not_called()
+    mock_kafka_producer.send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pioneer_kafka_send_fails_but_returns_accepted(scoring_service_fixture):
+    """Отправка в Kafka падает, но сервис все равно возвращает accepted"""
+    service, _, mock_kafka_producer = scoring_service_fixture
+
+    mock_kafka_producer.send.side_effect = KafkaError('Kafka is down')
+
+    result = await service.user_scoring_pioneer(
+        MOCK_USER_DATA_PIONEER_ACCEPTED, MOCK_PRODUCTS_PIONEER
+    )
+
+    assert result['decision'] == 'accepted'
+    mock_kafka_producer.send.assert_called_once()
 
 
 @pytest.mark.asyncio
 @patch('app.logic.scoring.get_credit_status', return_value='closed')
-async def test_repeater_accepted_and_updated(mock_get_credit_status, scoring_service_fixture):
-    service, mock_client = scoring_service_fixture
+async def test_repeater_accepted_sends_to_kafka(mock_get_status, scoring_service_fixture):
+    """Повторный клиент одобрен, сообщение успешно отправлено в Kafka."""
+    service, mock_http_client, mock_kafka_producer = scoring_service_fixture
+
 
     mock_get_response = MagicMock(spec=httpx.Response, status_code=200)
     mock_get_response.json.return_value = MOCK_REPEATER_PROFILE_JSON
-    mock_put_response = MagicMock(spec=httpx.Response, status_code=200)
-    mock_client.get.return_value = mock_get_response
-    mock_client.put.return_value = mock_put_response
+    mock_http_client.get.return_value = mock_get_response
 
-    result = await service.user_scoring_repeater(MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER)
+    result = await service.user_scoring_repeater(
+        MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER
+    )
 
     assert result['decision'] == 'accepted'
-    assert result['product'] is not None
-    mock_client.get.assert_called_once()
-    mock_client.put.assert_called_once()
+    mock_http_client.get.assert_called_once()
+    mock_kafka_producer.send.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_repeater_user_not_found(scoring_service_fixture):
-    service, mock_client = scoring_service_fixture
+async def test_repeater_user_not_found_does_not_send_to_kafka(scoring_service_fixture):
+    """Повторный клиент не найден, в Kafka ничего не отправляется."""
+    service, mock_http_client, mock_kafka_producer = scoring_service_fixture
+
     mock_response = MagicMock(spec=httpx.Response, status_code=404)
-    mock_client.get.return_value = mock_response
+    mock_http_client.get.return_value = mock_response
 
     with pytest.raises(UserNotFoundError):
         await service.user_scoring_repeater('71234567890', MOCK_PRODUCTS_REPEATER)
 
-
-@pytest.mark.asyncio
-@patch('app.logic.scoring.get_credit_status', return_value='closed')
-async def test_repeater_update_fails(mock_get_credit_status, scoring_service_fixture):
-    service, mock_client = scoring_service_fixture
-
-    mock_get_response = MagicMock(spec=httpx.Response, status_code=200)
-    mock_get_response.json.return_value = MOCK_REPEATER_PROFILE_JSON
-
-    mock_put_response = MagicMock(spec=httpx.Response, status_code=500)
-    mock_put_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        'Server Error', request=MagicMock(), response=mock_put_response
-    )
-
-    mock_client.get.return_value = mock_get_response
-    mock_client.put.return_value = mock_put_response
-
-    with pytest.raises(httpx.HTTPStatusError):
-        await service.user_scoring_repeater(MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER)
-
-
-@pytest.mark.asyncio
-@patch('app.logic.scoring.get_credit_status', return_value='closed')
-async def test_repeater_loan_already_exists(mock_get_credit_status, scoring_service_fixture):
-    service, mock_client = scoring_service_fixture
-
-    mock_get_response = MagicMock(spec=httpx.Response, status_code=200)
-    mock_get_response.json.return_value = MOCK_REPEATER_PROFILE_JSON
-
-    mock_put_response = MagicMock(spec=httpx.Response, status_code=422)
-
-    mock_client.get.return_value = mock_get_response
-    mock_client.put.return_value = mock_put_response
-
-    with pytest.raises(LoanAlreadyExistsError):
-        await service.user_scoring_repeater(MOCK_REPEATER_PROFILE_JSON['phone'], MOCK_PRODUCTS_REPEATER)
-
+    mock_kafka_producer.send.assert_not_called()

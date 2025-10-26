@@ -4,3 +4,8 @@ data_service:
   retries:
     max_attempts: 2
     delay: 1
+
+kafka:
+  bootstrap_servers: 'localhost:9092'
+  topic: 'scoring_results'
+  request_timeout_ms: 1000
