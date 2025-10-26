@@ -27,7 +27,7 @@ linting_flow:
   extends: .base
   stage: linting
   script:
-    - cd services/flow_service
+    - cd services/flow-service
     - poetry install --no-root
     - poetry run ruff check src/
 
@@ -36,7 +36,7 @@ mypy_flow:
   extends: .base
   stage: type-checking
   script:
-    - cd services/flow_service
+    - cd services/flow-service
     - poetry install --no-root
     - poetry run mypy src/
 
@@ -45,7 +45,7 @@ tests_flow:
   extends: .base
   stage: testing
   script:
-    - cd services/flow_service
+    - cd services/flow-service
     - poetry install --no-root
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
@@ -55,7 +55,7 @@ linting_scoring:
   extends: .base
   stage: linting
   script:
-    - cd services/scoring
+    - cd services/scoring-service
     - poetry install --no-root
     - poetry run ruff check src/
 
@@ -64,7 +64,7 @@ mypy_scoring:
   extends: .base
   stage: type-checking
   script:
-    - cd services/scoring
+    - cd services/scoring-service
     - poetry install --no-root
     - poetry run mypy src/
 
@@ -73,7 +73,7 @@ tests_scoring:
   extends: .base
   stage: testing
   script:
-    - cd services/scoring
+    - cd services/scoring-service
     - poetry install --no-root
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
