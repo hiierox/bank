@@ -34,4 +34,11 @@ services:
     ports:
       - "8085:8080"
 
-
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: shift_user
+      POSTGRES_PASSWORD: shift_password
+      POSTGRES_DB: data_service

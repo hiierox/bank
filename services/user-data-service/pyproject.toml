@@ -13,6 +13,10 @@ dependencies = [
     "aiokafka (>=0.12.0,<0.13.0)",
     "pyyaml (>=6.0.3,<7.0.0)",
     "types-pyyaml (>=6.0.12.20250915,<7.0.0.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "asyncpg (>=0.30.0,<0.31.0)",
+    "alembic (>=1.17.0,<2.0.0)",
+    "pydantic-settings (>=2.11.0,<3.0.0)",
 ]
 
 
@@ -51,6 +55,7 @@ exclude = [
     "dist",
     "venv",
     "tests",
+    "alembic",
 ]
 
 

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import yaml
 from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class KafkaConfig(BaseModel):
@@ -22,3 +23,11 @@ class Config(BaseModel):
         """
         config_raw = yaml.safe_load(Path(file_path).read_text(encoding='utf-8'))
         return cls.model_validate(config_raw)
+
+
+class DBSettings(BaseSettings):
+    """
+    Настраивает БД из переменных окружения
+    """
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    DATABASE_URL: str = 'postgresql+asyncpg://user:pass@host:port/db'
