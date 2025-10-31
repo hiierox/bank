@@ -1,24 +1,39 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.user_data.schemas import (
     GetUserProfileResponse,
     LoanEntryItem,
     LoanEntryUpdate,
     PutUserProfileRequest,
+    UserProfile,
 )
 from app.core.custom_exceptions import LoanAlreadyExistError, UserNotFoundError
-from app.repository.client_repo import ClientRepository
+from app.database.models import Loan, User
+from app.database.repository import LoanRepository, UserRepository
 
 
 class UserDataService:
-    def __init__(self, client_repo: ClientRepository) -> None:
-        self.client_repo = client_repo
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
 
     async def get_user_profile(self, phone: str) -> GetUserProfileResponse:
-        user_profile = await self.client_repo.get_user_profile(phone)
-        if user_profile:
+        """Получает профиль пользователя из базы данных"""
+
+        user_repo = UserRepository(self.session)
+        user = await user_repo.get_user_profile(phone)
+
+        if user:
             return GetUserProfileResponse(
-                phone=phone,
-                profile=user_profile['profile'],
-                history=user_profile['history']
+                phone=user.phone,
+                profile=UserProfile(
+                    age=user.age,
+                    monthly_income=user.monthly_income,
+                    employment_type=user.employment_type,
+                    has_property=user.has_property
+            ),
+                history=[
+                    LoanEntryItem.model_validate(loan) for loan in user.loans
+                ]
             )
         raise UserNotFoundError('User not found')
 
@@ -28,26 +43,48 @@ class UserDataService:
         Возвращает True, если пользователь создан, False, если обновлён.
         """
         is_new_user = False
-        if request.profile:
-            is_new_user = await self.client_repo.update_or_create_user_profile(
-                phone,
-                request.profile
-            )
+        async with self.session.begin():
+            user_repo = UserRepository(self.session)
+            loan_repo = LoanRepository(self.session)
 
-        user_exist = await self.client_repo.get_user_profile(phone)
-        if not user_exist:
-            raise UserNotFoundError('User not found')
-
-        if request.loan_entry:
-            if isinstance(request.loan_entry, LoanEntryItem):
-                is_loan_in_db = await self.client_repo.is_loan_entry_in_db(
-                    phone,
-                    request.loan_entry.loan_id
+            if request.profile:
+                db_user = User(
+                    phone=phone,
+                    age=request.profile.age,
+                    monthly_income=request.profile.monthly_income,
+                    employment_type=request.profile.employment_type,
+                    has_property=request.profile.has_property
                 )
-                if not is_loan_in_db:
-                    await self.client_repo.add_new_loan_entry(phone, request.loan_entry)
-                else:
-                    raise LoanAlreadyExistError
-            elif isinstance(request.loan_entry, LoanEntryUpdate):
-                await self.client_repo.update_loan_entry(phone, request.loan_entry)
+                is_new_user = await user_repo.update_or_create_user_profile(db_user)
+
+            user_exist = await user_repo.get_user_profile(phone)
+
+            if not user_exist:
+                raise UserNotFoundError('User not found')
+
+            if request.loan_entry:
+                if isinstance(request.loan_entry, LoanEntryItem):
+                    is_loan_in_db = await loan_repo.is_loan_entry_in_db(
+                        request.loan_entry.loan_id
+                    )
+                    if is_loan_in_db:
+                        raise LoanAlreadyExistError
+
+                    db_loan = Loan(
+                        loan_id=request.loan_entry.loan_id,
+                        user_phone=phone,
+                        product_name=request.loan_entry.product_name,
+                        amount=request.loan_entry.amount,
+                        issue_date=request.loan_entry.issue_date,
+                        term_days=request.loan_entry.term_days,
+                        status=request.loan_entry.status,
+                        close_date=request.loan_entry.close_date
+                    )
+                    await loan_repo.add_new_loan_entry(db_loan)
+                elif isinstance(request.loan_entry, LoanEntryUpdate):
+                    await loan_repo.update_loan_entry(
+                        loan_id=request.loan_entry.loan_id,
+                        status=request.loan_entry.status,
+                        close_date=request.loan_entry.close_date
+                    )
         return is_new_user

@@ -1,12 +1,13 @@
 from datetime import date
 from typing import Literal, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PHONE_REG = r'^7\d{10}$'
 
 
 class UserProfile(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     age: int = Field(..., ge=0, le=120)
     monthly_income: int = Field(..., gt=0)
     employment_type: Literal['full_time', 'freelance']
@@ -14,6 +15,7 @@ class UserProfile(BaseModel):
 
 
 class LoanEntryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     loan_id: str
     product_name: str
     amount: int = Field(..., gt=0)
@@ -46,6 +48,7 @@ class LoanEntryUpdate(BaseModel):
 
 
 class GetUserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
     profile: UserProfile
     history: list[LoanEntryItem] = []

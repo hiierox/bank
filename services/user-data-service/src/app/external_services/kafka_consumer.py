@@ -8,14 +8,14 @@ from aiokafka import AIOKafkaConsumer
 from app.api.user_data.schemas import LoanEntryItem, PutUserProfileRequest, UserProfile
 from app.config.config import KafkaConfig
 from app.core.custom_exceptions import LoanAlreadyExistError
+from app.database.database import async_session_maker
 from app.logic.data_service import UserDataService
 
 logger = logging.getLogger(__name__)
 
 
 class KafkaConsumerService:
-    def __init__(self, config: KafkaConfig, data_service: UserDataService):
-        self.data_service = data_service
+    def __init__(self, config: KafkaConfig):
         self.consumer = AIOKafkaConsumer(
             config.topic,
             bootstrap_servers=config.bootstrap_servers,
@@ -93,18 +93,22 @@ class KafkaConsumerService:
                 f'Pydantic валидация провалена: {message}. Error: {e}')
             return
 
-        try:
-            logger.info(f"Обработка события '{event_type}' под ключу {phone}")
-            await self.data_service.put_user_data(phone, request)
-            logger.info(f'Обработка успешно завершена для ключа {phone}')
+        async with async_session_maker() as session:
+            data_service = UserDataService(session)
+            try:
+                logger.info(
+                    f"Обработка события '{event_type}' под ключу {phone}"
+                )
+                await data_service.put_user_data(phone, request)
+                logger.info(f'Обработка успешно завершена для ключа {phone}')
 
-        except LoanAlreadyExistError:
-            logger.warning(
-                f'Кредит c id {loan_entry.loan_id} уже существует {phone}.'
-            )
-        except Exception:
-            logger.exception(
-                f"""Ошибка сохранения данных для {phone}.
-                Сообщение будет обработано повторно"""
-            )
-            raise
+            except LoanAlreadyExistError:
+                logger.warning(
+                    f'Кредит c id {loan_entry.loan_id} уже существует {phone}.'
+                )
+            except Exception:
+                logger.exception(
+                    f"""Ошибка сохранения данных для {phone}.
+                    Сообщение будет обработано повторно"""
+                )
+                raise

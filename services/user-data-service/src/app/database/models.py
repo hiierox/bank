@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Literal
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -13,7 +14,7 @@ class User(Base):
     phone: Mapped[str] = mapped_column(String, primary_key=True)
     age: Mapped[int]
     monthly_income: Mapped[int]
-    employment_type: Mapped[str]
+    employment_type: Mapped[Literal['full_time', 'freelance']]
     has_property: Mapped[bool]
 
     loans: Mapped[list['Loan']] = relationship(

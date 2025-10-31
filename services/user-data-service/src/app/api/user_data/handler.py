@@ -10,11 +10,8 @@ from app.core.custom_exceptions import (
     LoanNotFoundError,
     UserNotFoundError,
 )
+from app.dependencies import get_user_data_service
 from app.logic.data_service import UserDataService
-from app.repository.client_repo import ClientRepository
-
-client_repo = ClientRepository()
-user_data_service = UserDataService(client_repo)
 
 router = APIRouter()
 
@@ -27,7 +24,8 @@ def validate_phone(phone: str) -> str:
 
 @router.get('/user-data', response_model=GetUserProfileResponse)
 async def get_user_data(
-    phone: Annotated[str, Depends(validate_phone)]
+    phone: Annotated[str, Depends(validate_phone)],
+    user_data_service: UserDataService = Depends(get_user_data_service)
 ) -> GetUserProfileResponse:
     try:
         return await user_data_service.get_user_profile(phone)
@@ -41,7 +39,11 @@ async def get_user_data(
 
 
 @router.put('/user-data')
-async def put_user_data(request: PutUserProfileRequest) -> JSONResponse:
+async def put_user_data(
+    request: PutUserProfileRequest,
+    user_data_service: UserDataService = Depends(
+        get_user_data_service)
+) -> JSONResponse:
     try:
 
         is_new_user = await user_data_service.put_user_data(request.phone, request)

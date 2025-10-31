@@ -42,3 +42,11 @@ services:
       POSTGRES_USER: shift_user
       POSTGRES_PASSWORD: shift_password
       POSTGRES_DB: data_service
+  postgres_test:
+    image: postgres:17-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test

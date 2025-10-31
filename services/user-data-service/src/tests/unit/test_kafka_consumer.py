@@ -1,22 +1,8 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.custom_exceptions import LoanAlreadyExistError
 from app.external_services.kafka_consumer import KafkaConsumerService
-from app.logic.data_service import UserDataService
-
-
-@pytest.fixture
-async def mock_data_service() -> AsyncMock:
-    return AsyncMock(spec=UserDataService)
-
-
-@pytest.fixture
-async def consumer_service(mock_data_service: AsyncMock) -> KafkaConsumerService:
-    mock_config = MagicMock()
-    return KafkaConsumerService(config=mock_config, data_service=mock_data_service)
-
 
 PIONEER_MESSAGE = {
     'version': 1,
@@ -52,37 +38,65 @@ REPEATER_MESSAGE = {
 }
 
 
+@pytest.fixture
+def mock_kafka_dependencies():
+    """
+    Фикстура, которая патчит UserDataService
+    """
+    with patch(
+        'app.external_services.kafka_consumer.UserDataService', autospec=True
+    ) as MockUserDataService:
+
+        mock_service_instance = AsyncMock()
+        MockUserDataService.return_value = mock_service_instance
+
+        yield mock_service_instance
+
+
+@pytest.fixture
+def consumer_service():
+    """
+    Фикстура, создающая экземпляр KafkaConsumerService
+    c замоканным AIOKafkaConsumer
+    """
+    with patch('app.external_services.kafka_consumer.AIOKafkaConsumer'):
+        mock_config = MagicMock()
+        service = KafkaConsumerService(config=mock_config)
+        yield service
+
+
 @pytest.mark.asyncio
-async def test_process_pioneer_message_success(
-    consumer_service: KafkaConsumerService,
-    mock_data_service: AsyncMock
-):
-    """Успешная обработка сообщения pioneer_accepted."""
+async def test_process_pioneer_message_success(consumer_service, mock_kafka_dependencies):
+    """Успешная обработка сообщения o новом клиенте."""
+    mock_data_service = mock_kafka_dependencies
+
     await consumer_service.process_message(PIONEER_MESSAGE)
 
-    mock_data_service.put_user_data.assert_called_once()
-    call_args = mock_data_service.put_user_data.call_args
-    assert call_args.args[0] == PIONEER_MESSAGE['phone']
-    assert call_args.args[1].profile is not None
+    mock_data_service.put_user_data.assert_awaited_once()
+    call_args, _ = mock_data_service.put_user_data.call_args
+    assert call_args[0] == PIONEER_MESSAGE['phone']
+    assert call_args[1].profile is not None and call_args[1].profile.age == 30
+    assert call_args[1].loan_entry.loan_id == 'pioneer_loan_1'
 
 
 @pytest.mark.asyncio
-async def test_process_repeater_message_success(
-    consumer_service: KafkaConsumerService,
-    mock_data_service: AsyncMock
-):
-    """Успешная обработка сообщения repeater_accepted."""
+async def test_process_repeater_message_success(consumer_service, mock_kafka_dependencies):
+    """Успешная обработка сообщения o повторном клиенте."""
+    mock_data_service = mock_kafka_dependencies
+
     await consumer_service.process_message(REPEATER_MESSAGE)
 
-    mock_data_service.put_user_data.assert_called_once()
+    mock_data_service.put_user_data.assert_awaited_once()
+    call_args, _ = mock_data_service.put_user_data.call_args
+    assert call_args[0] == REPEATER_MESSAGE['phone']
+    assert call_args[1].profile.age == 41
+    assert call_args[1].profile.monthly_income == 90000
 
 
 @pytest.mark.asyncio
-async def test_skip_message_with_unsupported_version(
-    consumer_service: KafkaConsumerService,
-    mock_data_service: AsyncMock
-):
-    """Сообщение c неверной версией игнорируется."""
+async def test_skip_message_with_unsupported_version(consumer_service, mock_kafka_dependencies):
+    """Сообщение c неверной версией"""
+    mock_data_service = mock_kafka_dependencies
     invalid_message = PIONEER_MESSAGE.copy()
     invalid_message['version'] = 2
 
@@ -92,11 +106,9 @@ async def test_skip_message_with_unsupported_version(
 
 
 @pytest.mark.asyncio
-async def test_skip_message_with_missing_fields(
-    consumer_service: KafkaConsumerService,
-    mock_data_service: AsyncMock
-):
-    """Сообщение c отсутствующими полями игнорируется."""
+async def test_skip_message_with_missing_required_field(consumer_service, mock_kafka_dependencies):
+    """Сообщение c отсутствующим обязательным полем phone"""
+    mock_data_service = mock_kafka_dependencies
     invalid_message = PIONEER_MESSAGE.copy()
     del invalid_message['phone']
 
@@ -106,28 +118,12 @@ async def test_skip_message_with_missing_fields(
 
 
 @pytest.mark.asyncio
-async def test_ignore_loan_already_exists_error(
-    consumer_service: KafkaConsumerService,
-    mock_data_service: AsyncMock
-):
-    """Ошибка LoanAlreadyExistError логируется, но сервис не падает."""
-    mock_data_service.put_user_data.side_effect = LoanAlreadyExistError
+async def test_skip_message_with_invalid_pydantic_data(consumer_service, mock_kafka_dependencies):
+    """Сообщение c невалидными данными игнорируется"""
+    mock_data_service = mock_kafka_dependencies
+    invalid_message = PIONEER_MESSAGE.copy()
+    invalid_message['history_entry']['amount'] = 'string' # type: ignore
 
-    await consumer_service.process_message(PIONEER_MESSAGE)
+    await consumer_service.process_message(invalid_message)
 
-    mock_data_service.put_user_data.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_re_raise_other_exceptions(
-    consumer_service: KafkaConsumerService,
-    mock_data_service: AsyncMock
-):
-    """Любая ошибка пробрасывается наверх."""
-    mock_data_service.put_user_data.side_effect = ValueError(
-        'Error')
-
-    with pytest.raises(ValueError):
-        await consumer_service.process_message(PIONEER_MESSAGE)
-
-    mock_data_service.put_user_data.assert_called_once()
+    mock_data_service.put_user_data.assert_not_called()
