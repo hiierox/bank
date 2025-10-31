@@ -3,7 +3,10 @@
 ```bash
 poetry install --no-root
 ```
-Запуск из корня проекта - services/flow_service 
+Создать .env в services/user-data-service и добавить `DATABASE_URL=postgresql+asyncpg://shift_user:shift_password@localhost:5432/data_service`
+
+Запустить `docker-compose up -d` (все переменные для БД прямо там указал пока)
+Запуск сервиса из корня проекта - services/user-data-service 
 `sh run.sh`
 
 
