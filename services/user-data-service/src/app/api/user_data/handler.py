@@ -1,10 +1,14 @@
 import re
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 
-from app.api.user_data.schemas import GetUserProfileResponse, PutUserProfileRequest
+from app.api.user_data.schemas import (
+    GetUserProfileResponse,
+    ProductResponse,
+    PutUserProfileRequest,
+)
 from app.core.custom_exceptions import (
     LoanAlreadyExistError,
     LoanNotFoundError,
@@ -68,4 +72,18 @@ async def put_user_data(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Unexpected error in user_data_service'
+        ) from e
+
+
+@router.get('/api/products')
+async def get_products_list(
+    flow_type: Literal['pioneer', 'repeater'] | None = None,
+    user_data_service: UserDataService = Depends(get_user_data_service)
+) -> list[ProductResponse] | dict[str, str]:
+    try:
+        return await user_data_service.get_products_list(flow_type)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Unexcepted error in user_data_service'
         ) from e

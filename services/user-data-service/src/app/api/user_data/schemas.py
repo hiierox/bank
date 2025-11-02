@@ -58,3 +58,10 @@ class PutUserProfileRequest(BaseModel):
     phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
     profile: UserProfile | None = None
     loan_entry: LoanEntryItem | LoanEntryUpdate | None = None
+
+
+class ProductResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    product_name: str
+    amount: int
+    percentage: float

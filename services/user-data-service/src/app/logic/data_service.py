@@ -4,12 +4,13 @@ from app.api.user_data.schemas import (
     GetUserProfileResponse,
     LoanEntryItem,
     LoanEntryUpdate,
+    ProductResponse,
     PutUserProfileRequest,
     UserProfile,
 )
 from app.core.custom_exceptions import LoanAlreadyExistError, UserNotFoundError
 from app.database.models import Loan, User
-from app.database.repository import LoanRepository, UserRepository
+from app.database.repository import LoanRepository, ProductRepository, UserRepository
 
 
 class UserDataService:
@@ -30,7 +31,7 @@ class UserDataService:
                     monthly_income=user.monthly_income,
                     employment_type=user.employment_type,
                     has_property=user.has_property
-            ),
+                ),
                 history=[
                     LoanEntryItem.model_validate(loan) for loan in user.loans
                 ]
@@ -88,3 +89,12 @@ class UserDataService:
                         close_date=request.loan_entry.close_date
                     )
         return is_new_user
+
+    async def get_products_list(
+        self, flow_type: str | None
+    ) -> list[ProductResponse] | dict[str, str]:
+        product_repo = ProductRepository(self.session)
+        result = await product_repo.get_products_list(flow_type)
+        if result:
+            return [ProductResponse.model_validate(p) for p in result]
+        return {'message': 'Products unavailable'}

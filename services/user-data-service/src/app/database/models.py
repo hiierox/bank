@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -37,3 +37,14 @@ class Loan(Base):
 
     user_phone: Mapped['User'] = mapped_column(ForeignKey('users.phone'))
     user: Mapped['User'] = relationship(back_populates='loans')
+
+
+class Product(Base):
+    """Продукты пользователей"""
+    __tablename__ = 'products'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_name: Mapped[str]
+    amount: Mapped[str]
+    percentage: Mapped[float]
+    flow_type: Mapped[str]

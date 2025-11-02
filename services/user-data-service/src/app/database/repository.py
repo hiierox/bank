@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import date
 
 from sqlalchemy import select
@@ -6,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.custom_exceptions import LoanNotFoundError
 
-from .models import Loan, User
+from .models import Loan, Product, User
 
 
 class UserRepository:
@@ -73,3 +74,18 @@ class LoanRepository:
 
         loan.status = status
         loan.close_date = close_date
+
+
+class ProductRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def get_products_list(self, flow_type: str | None) -> Sequence[Product]:
+        """Возвращает список продуктов в зависимости от flow_type.
+        Если flow_type == None, возвращает все продукты
+        """
+        request = select(Product)
+        if flow_type:
+            request = request.where(Product.flow_type == flow_type)
+        result = await self.session.scalars(request)
+        return result.all()
