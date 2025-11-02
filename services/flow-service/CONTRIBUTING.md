@@ -3,7 +3,10 @@
 ```bash
 poetry install --no-root
 ```
-Запуск из корня проекта - services/flow_service 
+1.`docker-compose up -d`  
+Затем запуск user-data-service
+
+Запуск этого сервиса из корня проекта - services/flow_service 
 `sh run.sh`
 
 Документация доступна по адресу

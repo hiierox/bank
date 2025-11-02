@@ -42,6 +42,7 @@ services:
       POSTGRES_USER: shift_user
       POSTGRES_PASSWORD: shift_password
       POSTGRES_DB: data_service
+
   postgres_test:
     image: postgres:17-alpine
     ports:
@@ -50,3 +51,9 @@ services:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
       POSTGRES_DB: test
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru

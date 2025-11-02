@@ -15,9 +15,9 @@ class NumberRequest(BaseModel):
 
 
 class Product(BaseModel):
-    name: str
-    amount: str
-    percentage: str
+    product_name: str
+    amount: int
+    percentage: float
 
 
 class ResponseModel(BaseModel):

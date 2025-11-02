@@ -4,3 +4,8 @@ data_service:
   retries:
     max_attempts: 2
     delay: 1
+
+redis:
+  host: "localhost"
+  port: 6379
+  ttl: 60

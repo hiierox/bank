@@ -10,18 +10,21 @@ from tenacity import (
 )
 
 from app.config.config import Config
-from app.repository.product_repo import ProductRepository
+from app.external_services.redis import RedisService
 
 logger = logging.getLogger(__name__)
 
 
 class FlowService:
-    def __init__(self, product_repo: ProductRepository,
-                 client: httpx.AsyncClient,
-                 config: Config
-                 ):
-        self.product_repo = product_repo
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        config: Config,
+        redis_service: RedisService
+    ):
         self.client = client
+        self.config = config
+        self.redis_service = redis_service
         self.retryer = AsyncRetrying(
             stop=stop_after_attempt(
                 config.data_service.retries.max_attempts + 1
@@ -62,16 +65,25 @@ class FlowService:
             async for attempt in self.retryer:
                 with attempt:
                     flow_type = await self.check_client_type(phone)
-            if flow_type == 'repeater':
-                products = await self.product_repo.get_repeater_products()
-            if flow_type == 'pioneer':
-                products = await self.product_repo.get_pioneer_products()
-            return {
-                'flow_type': flow_type,
-                'available_products': products
-            }
         except Exception as e:
             logger.error(
                 f'Integration error with user-data-service. phone={phone}, {str(e)}'  # noqa: RUF010
                 )
             raise e
+
+        if flow_type is None:
+            logger.error('Flow type selection Error')
+            raise Exception
+
+        products = await self.redis_service.get_products(flow_type)
+
+        if products is None:
+            response = await self.client.get(f'/api/products?flow_type={flow_type}')
+            response.raise_for_status()
+            products = response.json()
+            await self.redis_service.set_products(flow_type, products)
+
+        return {
+            'flow_type': flow_type,
+            'available_products': products
+        }
