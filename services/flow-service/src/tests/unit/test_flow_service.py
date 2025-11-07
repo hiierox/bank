@@ -3,35 +3,17 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from app.config.config import Config
 from app.external_services.redis import RedisService
 from app.logic.flow_service import FlowService
 
 
 @pytest.fixture
-def config_fixture() -> Config:
-    return Config.model_validate({
-        'data_service': {
-            'base_url': 'test_url',
-            'timeout': 1,
-            'retries': {'max_attempts': 2, 'delay': 0}
-        },
-        'redis': {
-            'host': 'localhost',
-            'port': 1111,
-            'ttl': 10
-        }
-    })
-
-
-@pytest.fixture
-def flow_service_fixture(config_fixture):
+def flow_service_fixture():
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
     mock_redis_service = AsyncMock(spec=RedisService)
 
     service = FlowService(
         client=mock_http_client,
-        config=config_fixture,
         redis_service=mock_redis_service
     )
     return service, mock_http_client, mock_redis_service

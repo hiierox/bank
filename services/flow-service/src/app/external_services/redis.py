@@ -4,7 +4,7 @@ from typing import Any
 
 import redis.asyncio as redis
 
-from app.config.config import Config
+from app.config.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -13,10 +13,8 @@ class RedisService:
     def __init__(
         self,
         redis_client: redis.Redis,
-        config: Config
     ):
         self.redis_client = redis_client
-        self.config = config
 
     async def get_products(self, flow_type: str) -> Any | None:
         """Получение продуктов из кэша"""
@@ -42,7 +40,7 @@ class RedisService:
             await self.redis_client.set(
                 key,
                 product_dumps,
-                ex=self.config.redis.ttl
+                ex=settings.REDIS_TTL
             )
         except redis.RedisError as e:
             logger.error(f'Redis SET Error: {e}')

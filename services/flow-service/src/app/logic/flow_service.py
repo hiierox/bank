@@ -9,7 +9,7 @@ from tenacity import (
     wait_fixed,
 )
 
-from app.config.config import Config
+from app.config.config import settings
 from app.external_services.redis import RedisService
 
 logger = logging.getLogger(__name__)
@@ -19,17 +19,15 @@ class FlowService:
     def __init__(
         self,
         client: httpx.AsyncClient,
-        config: Config,
         redis_service: RedisService
     ):
         self.client = client
-        self.config = config
         self.redis_service = redis_service
         self.retryer = AsyncRetrying(
             stop=stop_after_attempt(
-                config.data_service.retries.max_attempts + 1
+                settings.DATA_SERVICE_MAX_ATTEMPTS + 1
             ),
-            wait=wait_fixed(config.data_service.retries.delay),
+            wait=wait_fixed(settings.DATA_SERVICE_DELAY),
             retry=retry_if_exception_type(
                 (httpx.TimeoutException, httpx.HTTPStatusError)
             ),

@@ -6,7 +6,7 @@ import pytest
 import redis.asyncio as redis
 from fastapi.testclient import TestClient
 
-from app.dependencies import get_config, get_http_client, get_redis_service
+from app.dependencies import get_http_client, get_redis_service
 from app.external_services.redis import RedisService
 from app.service import app
 
@@ -18,8 +18,7 @@ def client_with_mocked_deps():
 
     app.dependency_overrides[get_http_client] = lambda: mock_http_client
     app.dependency_overrides[get_redis_service] = lambda: RedisService(
-        mock_redis_client,
-        get_config()
+        mock_redis_client
     )
     test_client = TestClient(app)
 

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 import redis.asyncio as redis
 
-from app.dependencies import get_config
+from app.config.config import settings
 from app.external_services.redis import RedisService
 
 
@@ -12,7 +12,7 @@ from app.external_services.redis import RedisService
 async def test_redis_service_get_products_hit():
     mock_redis_client = AsyncMock(spec=redis.Redis)
     redis_service = RedisService(
-        redis_client=mock_redis_client, config=get_config()
+        redis_client=mock_redis_client
     )
     flow_type = 'pioneer'
     key = f'products:{flow_type}'
@@ -33,7 +33,7 @@ async def test_redis_service_get_products_hit():
 async def test_redis_service_get_products_miss():
     mock_redis_client = AsyncMock(spec=redis.Redis)
     redis_service = RedisService(
-        redis_client=mock_redis_client, config=get_config())
+        redis_client=mock_redis_client)
     flow_type = 'repeater'
     key = f'products:{flow_type}'
 
@@ -49,7 +49,7 @@ async def test_redis_service_get_products_miss():
 async def test_redis_service_get_products_error():
     mock_redis_client = AsyncMock(spec=redis.Redis)
     redis_service = RedisService(
-        redis_client=mock_redis_client, config=get_config())
+        redis_client=mock_redis_client)
     flow_type = 'pioneer'
     key = f'products:{flow_type}'
     mock_redis_client.get = AsyncMock(side_effect=redis.RedisError())
@@ -64,7 +64,7 @@ async def test_redis_service_get_products_error():
 async def test_redis_service_set_products_success():
     mock_redis_client = AsyncMock(spec=redis.Redis)
     redis_service = RedisService(
-        redis_client=mock_redis_client, config=get_config())
+        redis_client=mock_redis_client)
     flow_type = 'pioneer'
     key = f'products:{flow_type}'
     products_to_cache = [{
@@ -79,7 +79,7 @@ async def test_redis_service_set_products_success():
     mock_redis_client.set.assert_awaited_once_with(
         key,
         expected_redis_value,
-        ex=get_config().redis.ttl
+        ex=settings.REDIS_TTL
     )
 
 
@@ -87,7 +87,7 @@ async def test_redis_service_set_products_success():
 async def test_redis_service_set_products_error():
     mock_redis_client = AsyncMock(spec=redis.Redis)
     redis_service = RedisService(
-        redis_client=mock_redis_client, config=get_config())
+        redis_client=mock_redis_client)
     flow_type = 'repeater'
     products_to_cache = [{
         'product_name': 'Product', 'amount': 150, 'percentage': 8.0
