@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.config.config import DBSettings
+from app.config.config import settings
 from app.database.database import Base, get_async_session
 from app.database.models import Loan, User
 from app.dependencies import get_user_data_service
@@ -30,7 +30,6 @@ MOCK_LOAN_ENTRY_DATA = {
 @pytest.fixture
 async def db_init():
 
-    settings = DBSettings()
     engine = create_async_engine(url=settings.DATABASE_URL)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

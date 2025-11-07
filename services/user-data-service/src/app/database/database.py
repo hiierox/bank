@@ -8,9 +8,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-from app.config.config import DBSettings
-
-settings = DBSettings()
+from app.config.config import settings
 
 engine = create_async_engine(
     url=settings.DATABASE_URL

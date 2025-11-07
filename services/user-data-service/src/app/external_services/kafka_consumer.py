@@ -6,7 +6,7 @@ from typing import Any
 from aiokafka import AIOKafkaConsumer
 
 from app.api.user_data.schemas import LoanEntryItem, PutUserProfileRequest, UserProfile
-from app.config.config import KafkaConfig
+from app.config.config import Settings
 from app.core.custom_exceptions import LoanAlreadyExistError
 from app.database.database import async_session_maker
 from app.logic.data_service import UserDataService
@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class KafkaConsumerService:
-    def __init__(self, config: KafkaConfig):
+    def __init__(self, config: Settings):
         self.consumer = AIOKafkaConsumer(
-            config.topic,
-            bootstrap_servers=config.bootstrap_servers,
-            group_id=config.group_id,
+            config.KAFKA_TOPIC,
+            bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS,
+            group_id=config.KAFKA_GROUP_ID,
             auto_offset_reset='earliest'
         )
         self._task: asyncio.Task[None] | None = None
