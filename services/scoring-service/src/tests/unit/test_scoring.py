@@ -4,7 +4,7 @@ import httpx
 import pytest
 from aiokafka.errors import KafkaError
 
-from app.config.config import Config
+# from app.config.config import settings, Settings
 from app.core.constants import REJECT_RESPONSE
 from app.core.custom_exceptions import UserNotFoundError
 from app.external_service.kafka_producer import KafkaProducerService
@@ -18,26 +18,13 @@ from tests.unit.mock_scoring_data import (
 )
 
 
-@pytest.fixture
-def config_fixture() -> Config:
-    return Config.model_validate({
-        'data_service': {
-            'base_url': 'http://test-data-service', 'timeout': 1,
-            'retries': {'max_attempts': 2, 'delay': 0}
-        },
-        'kafka': {
-            'bootstrap_servers': 'mock-kafka:9092', 'topic': 'scoring_results', 'request_timeout_ms': 10
-        }
-    })
-
 
 @pytest.fixture
-def scoring_service_fixture(config_fixture):
+def scoring_service_fixture():
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
     mock_kafka_producer = AsyncMock(spec=KafkaProducerService)
     service = UserScoring(
         client=mock_http_client,
-        config=config_fixture,
         kafka_producer=mock_kafka_producer
     )
     return service, mock_http_client, mock_kafka_producer

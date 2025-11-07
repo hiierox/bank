@@ -1,31 +1,14 @@
-from pathlib import Path
-
-import yaml
-from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class RetriesConfig(BaseModel):
-    max_attempts: int = Field(..., alias='max_attempts')
-    delay: int = Field(..., alias='delay')
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
+    DATA_SERVICE_BASE_URL: str = 'http://localhost:8002'
+    DATA_SERVICE_TIMEOUT: int = 5
+    DATA_SERVICE_RETRIES_MAX_ATTEMPTS: int = 2
+    DATA_SERVICE_RETRIES_DELAY: int = 1
+    KAFKA_BOOTSTRAP_SERVERS: str = 'localhost:9092'
+    KAFKA_TOPIC: str = 'default_topic'
+    KAFKA_TIMEOUT_MS: int = 100
 
-
-class DataServiceConfig(BaseModel):
-    base_url: str
-    timeout: int
-    retries: RetriesConfig
-
-
-class KafkaConfig(BaseModel):
-    bootstrap_servers: str
-    topic: str
-    request_timeout_ms: int
-
-
-class Config(BaseModel):
-    data_service: DataServiceConfig
-    kafka: KafkaConfig
-
-    @classmethod
-    def from_yaml(cls, file_path: Path | str) -> 'Config':
-        config_raw = yaml.safe_load(Path(file_path).read_text(encoding='utf-8'))
-        return cls.model_validate(config_raw)
+settings = Settings()

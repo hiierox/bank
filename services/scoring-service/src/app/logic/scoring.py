@@ -13,7 +13,6 @@ from app.api.scoring.schemas import (
     UserData,
     UserProfileForDataService,
 )
-from app.config.config import Config
 from app.core.constants import (
     AGE_POINTS_RULES,
     EMPLOYMENT_TYPE,
@@ -36,11 +35,9 @@ class UserScoring:
     def __init__(
         self,
         client: httpx.AsyncClient,
-        config: Config,
         kafka_producer: KafkaProducerService
     ):
         self.client = client
-        self.config = config
         self.kafka_producer = kafka_producer
 
     async def _send_kafka_event(

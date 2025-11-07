@@ -5,19 +5,19 @@ from typing import Any
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaError
 
-from app.config.config import KafkaConfig
+from app.config.config import Settings
 
 logger = logging.getLogger(__name__)
 
 
 class KafkaProducerService:
-    def __init__(self, kafka_config: KafkaConfig):
-        self.kafka_config = kafka_config
+    def __init__(self, config: Settings):
+        self.config = config
         self.producer = AIOKafkaProducer(
-            bootstrap_servers=kafka_config.bootstrap_servers,
-            request_timeout_ms=kafka_config.request_timeout_ms
+            bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS,
+            request_timeout_ms=config.KAFKA_TIMEOUT_MS
         )
-        self.topic = self.kafka_config.topic
+        self.topic = self.config.KAFKA_TOPIC
 
     async def start(self) -> None:
         logger.info('Starting Kafka producer...')
