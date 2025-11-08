@@ -1,3 +1,7 @@
 /tests
 .env
+.mypy_cache
+.pytest_cache 
+.ruff_cache
+__pycache__/
 run.sh
