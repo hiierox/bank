@@ -1,11 +1,17 @@
 # Установка и запуск сервиса
 
+### Для локального запуска:
 ```bash
 poetry install --no-root
 ```
-Создать .env в services/user-data-service и добавить `DATABASE_URL=postgresql+asyncpg://shift_user:shift_password@localhost:5432/data_service`
-
-Запустить `docker-compose up -d` (все переменные для БД прямо там указал пока)
+Создать `.env` в services/user-data-service и добавить
+```
+DATABASE_URL=postgresql+asyncpg://shift_user:shift_password@localhost:5432/data_service
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_TOPIC=scoring_results
+KAFKA_GROUP_ID=data_service_group
+```
+Запустить `docker-compose up -d` без data-service
 Запуск сервиса из корня проекта - services/user-data-service 
 `sh run.sh`
 
