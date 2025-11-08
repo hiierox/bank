@@ -4,7 +4,7 @@ stages:
   - linting
   - type-checking
   - testing
-
+  - build
 
 .base:
   tags:
@@ -13,15 +13,14 @@ stages:
     - pip install poetry
   rules:
     - changes:
-      - "**/*.py"
-      - ".gitlab-ci.yml"
-      - "services/**/poetry.lock"
+        - "**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/**/poetry.lock"
       when: on_success
     - changes:
-      - "**.md"
+        - "**.md"
       when: never
     - when: never
-
 
 linting_flow:
   extends: .base
@@ -31,7 +30,6 @@ linting_flow:
     - poetry install --no-root
     - poetry run ruff check src/
 
-
 mypy_flow:
   extends: .base
   stage: type-checking
@@ -39,7 +37,6 @@ mypy_flow:
     - cd services/flow-service
     - poetry install --no-root
     - poetry run mypy src/
-
 
 tests_flow:
   extends: .base
@@ -50,7 +47,6 @@ tests_flow:
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
-
 linting_scoring:
   extends: .base
   stage: linting
@@ -59,7 +55,6 @@ linting_scoring:
     - poetry install --no-root
     - poetry run ruff check src/
 
-
 mypy_scoring:
   extends: .base
   stage: type-checking
@@ -67,7 +62,6 @@ mypy_scoring:
     - cd services/scoring-service
     - poetry install --no-root
     - poetry run mypy src/
-
 
 tests_scoring:
   extends: .base
@@ -78,7 +72,6 @@ tests_scoring:
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
-
 linting_data:
   extends: .base
   stage: linting
@@ -87,7 +80,6 @@ linting_data:
     - poetry install --no-root
     - poetry run ruff check src/
 
-
 mypy_data:
   extends: .base
   stage: type-checking
@@ -95,7 +87,6 @@ mypy_data:
     - cd services/user-data-service
     - poetry install --no-root
     - poetry run mypy src/
-
 
 tests_data:
   extends: .base
@@ -115,6 +106,45 @@ tests_data:
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
+.docker-build:
+  stage: build
+  image: docker:24.0.5-cli
+  services:
+    - name: docker:24.0.5-dind
+      alias: dockerdaemon
+  variables:
+    DOCKER_HOST: tcp://dockerdaemon:2375
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+  script:
+    - docker build
+      -t "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+      -f "$SERVICE_PATH/Dockerfile"
+      "$SERVICE_PATH"
+    - docker push "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "$SERVICE_PATH/**/*"
+
+build_data_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/user-data-service"
+    IMAGE_NAME: "data-service"
+
+build_scoring_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/scoring-service"
+    IMAGE_NAME: "scoring-service"
+
+build_flow_selection_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/flow-service"
+    IMAGE_NAME: "flow-service"
 
 cache:
   key:
