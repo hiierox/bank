@@ -107,6 +107,8 @@ tests_data:
   coverage: '/TOTAL.*\s+(\d+%)$/'
 
 .docker-build:
+  tags:
+    - shell
   stage: build
   image: docker:24.0.5-cli
   services:
