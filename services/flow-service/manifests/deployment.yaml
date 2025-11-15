@@ -84,11 +84,10 @@ spec:
             - name: REDIS_TTL
               valueFrom:
                 configMapKeyRef:
-                name: app-config-kbatrakov
-                key: REDIS_TTL
+                  name: app-config-kbatrakov
+                  key: REDIS_TTL
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: db-credentials-kbatrakov
-                  key: REDIS_PASSWORD
-                
+                  key: REDIS_PASSWORD   

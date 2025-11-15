@@ -7,10 +7,10 @@ metadata:
     student: kbatrakov
     app: flow-selection-service
 data:
-  DATA_SERVICE_MAX_ATTEMPTS: 2
-  DATA_SERVICE_DELAY: 1
-  DATA_SERVICE_TIMEOUT:  5
+  DATA_SERVICE_MAX_ATTEMPTS: "2"
+  DATA_SERVICE_DELAY: "1"
+  DATA_SERVICE_TIMEOUT: "5"
   DATA_SERVICE_BASE_URL: "http://user-data-service-kbatrakov:8000"
   REDIS_HOST: "redis-master.infra.svc.cluster.local"
   REDIS_PORT: "6379"
-  REDIS_TTL: 60
+  REDIS_TTL: "60"
