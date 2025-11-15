@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scoring-service-kbatrakov
+  namespace: test
+  labels:
+    student: kbatrakov
+    app: scoring-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      student: kbatrakov
+      app: scoring-service
+  template:
+    metadata:
+      labels:
+        student: kbatrakov
+        app: scoring-service
+    spec:
+      imagePullSecrets:
+        - name: regcred-kbatrakov 
+      containers:
+        - name: scoring-service
+          image: shift.gitlab.yandexcloud.net:5050/shift-python/y2025/homeworks/batrakov-k/main_shift_project/scoring-service:latest
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "100Mi"
+              cpu: "100m"
+            requests:
+              memory: "50Mi"
+              cpu: "50m"
+          ports:
+            - containerPort: 8000
+
+          livenessProbe:
+            httpGet:
+              path: /up
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 2
+            failureThreshold: 5
+          
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 3
+            failureThreshold: 5
+            
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-kbatrakov
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-kbatrakov
+                  key: KAFKA_TOPIC
+            - name: KAFKA_GROUP_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-kbatrakov
+                  key: KAFKA_GROUP_ID
+            - name: DATA_SERVICE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config-kbatrakov
+                  key: DATA_SERVICE_BASE_URL

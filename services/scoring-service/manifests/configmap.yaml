@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config-kbatrakov
+  namespace: test
+  labels:
+    student: kbatrakov
+    app: scoring-service
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "infra-kafka.infra.svc.cluster.local:9092"
+  KAFKA_TOPIC: "kbatrakov_scoring_results"
+  KAFKA_GROUP_ID: "kbatrakov_user_data_service_group"
+  DATA_SERVICE_BASE_URL: "http://user-data-service-kbatrakov:8000"
