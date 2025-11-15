@@ -7,6 +7,7 @@ import redis.asyncio as redis
 from fastapi import FastAPI
 
 from app.api.products.handler import router as products_router
+from app.api.products.health import router as health_router
 from app.config.config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -36,3 +37,4 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(products_router, prefix='/api/products')
+app.include_router(health_router)
