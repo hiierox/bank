@@ -6,6 +6,7 @@ import httpx
 from fastapi import FastAPI
 
 from app.api.scoring.handler import router as scoring_router
+from app.api.scoring.health import router as health_router
 from app.config.config import settings
 from app.external_service.kafka_producer import KafkaProducerService
 
@@ -30,3 +31,4 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(scoring_router, prefix='/api/scoring')
+app.include_router(health_router)
