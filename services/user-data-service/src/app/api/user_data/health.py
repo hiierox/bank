@@ -10,13 +10,15 @@ router = APIRouter()
 
 
 @router.get('/up', status_code=200)
-async def liveness_probe():
+async def liveness_probe() -> dict[str, str]:
     """Liveness probe."""
     return {'status': 'ok'}
 
 
 @router.get('/ready', status_code=200)
-async def readiness_probe(session: AsyncSession = Depends(get_async_session)):
+async def readiness_probe(
+    session: AsyncSession = Depends(get_async_session),
+) -> dict[str, str]:
     """
     Readiness probe: проверяет подключение к БД и Kafka.
     """
@@ -24,17 +26,18 @@ async def readiness_probe(session: AsyncSession = Depends(get_async_session)):
         await session.execute(text('SELECT 1'))
     except Exception as e:
         raise HTTPException(
-            status_code=503, detail=f'Database connection failed: {e}') from e
+            status_code=503, detail=f'Database connection failed: {e}'
+        ) from e
 
     producer = None
     try:
-        producer = AIOKafkaProducer(
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+        producer = AIOKafkaProducer(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
         await producer.start()
         await producer.client.fetch_all_metadata()
     except Exception as e:
         raise HTTPException(
-            status_code=503, detail=f'Kafka connection failed: {e}') from e
+            status_code=503, detail=f'Kafka connection failed: {e}'
+        ) from e
     finally:
         if producer:
             await producer.stop()
