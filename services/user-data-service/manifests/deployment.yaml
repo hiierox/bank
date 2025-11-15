@@ -41,7 +41,7 @@ spec:
             httpGet:
               path: /up
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 50
             periodSeconds: 2
             failureThreshold: 5
           
@@ -49,7 +49,7 @@ spec:
             httpGet:
               path: /ready
               port: 8000
-            initialDelaySeconds: 20
+            initialDelaySeconds: 60
             periodSeconds: 3
             failureThreshold: 5
             
