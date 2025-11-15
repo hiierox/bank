@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,6 +12,18 @@ from app.config.config import settings
 from app.external_service.kafka_producer import KafkaProducerService
 
 logging.basicConfig(level=logging.INFO)
+
+
+async def start_kafka_with_retries(kafka_producer: KafkaProducerService) -> None:
+    while True:
+        try:
+            await kafka_producer.start()
+            return
+        except Exception as e:
+            logging.error(f'Kafka connection failed {e}')
+            await asyncio.sleep(5)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     http_client = httpx.AsyncClient(
@@ -20,11 +33,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.http_client = http_client
 
     kafka_producer = KafkaProducerService(settings)
-    await kafka_producer.start()
     app.state.kafka_producer = kafka_producer
+    kafta_start_task = asyncio.create_task(start_kafka_with_retries(kafka_producer))
 
     yield
 
+    kafta_start_task.cancel()
     await kafka_producer.stop()
     await http_client.aclose()
 
