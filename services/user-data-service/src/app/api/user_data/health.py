@@ -1,10 +1,10 @@
+from aiokafka import AIOKafkaClient
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.config import settings
 from app.database.database import get_async_session
-from app.external_services.kafka_consumer import KafkaConsumerService
 
 router = APIRouter()
 
@@ -29,16 +29,16 @@ async def readiness_probe(
             status_code=503, detail=f'Database connection failed: {e}'
         ) from e
 
-    consumer = None
+    client = None
     try:
-        consumer = KafkaConsumerService(config=settings)
-        await consumer.start()
+        client = AIOKafkaClient(bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS)
+        await client.bootstrap()
     except Exception as e:
         raise HTTPException(
             status_code=503, detail=f'Kafka connection failed: {e}'
         ) from e
     finally:
-        if consumer:
-            await consumer.stop()
+        if client:
+            await client.close()
 
     return {'status': 'ready'}
