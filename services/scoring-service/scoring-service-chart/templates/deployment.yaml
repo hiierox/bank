@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scoring-service.fullname.release" . }}
+  namespace: {{ .Values.student.namespace }}
+  labels:
+    {{ include "scoring-service.selectorLabels.custom" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "scoring-service.selectorLabels.custom" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scoring-service.selectorLabels.custom" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecrets.name }}
+      containers:
+        - name: {{ include "scoring-service-container.name" . }}
+          image: "{{ .Values.image.repository}}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          resources:
+            {{ toYaml .Values.resources | nindent 12}}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probe.liveness.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.probe.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probe.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probe.liveness.failureThreshold }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probe.readiness.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.probe.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probe.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probe.readiness.failureThreshold }}
+            
+          env:
+            - name: DATA_SERVICE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "scoring-service.configmap.name" . }}
+                  key: DATA_SERVICE_BASE_URL
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "scoring-service.configmap.name" . }}
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "scoring-service.configmap.name" . }}
+                  key: KAFKA_TOPIC
+            - name: KAFKA_GROUP_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "scoring-service.configmap.name" . }}
+                  key: KAFKA_GROUP_ID
