@@ -2,28 +2,23 @@
 
 _Склонировать репозиторий на вм_
 ### Применение манифестов
-Из директории main_shift_project
+Из директории main_shift_project  
+Имя релиза = имя пода
 #### user-data-service
 ```bash
 kubectl apply -f services/user-data-service/manifests/secret.yaml
-kubectl apply -f services/user-data-service/manifests/configmap.yaml 
-kubectl apply -f services/user-data-service/manifests/service.yaml 
-kubectl apply -f services/user-data-service/manifests/deployment.yaml --validate=false
+helm install user-data-service-kbatrakov services/user-data-service/user-data-service-chart
 ```
 Время ожидания готовности в зависимости от занятости ВМ 1-3 минуты
 #### scoring-service
 ```bash
-kubectl apply -f services/scoring-service/manifests/configmap.yaml 
-kubectl apply -f services/scoring-service/manifests/service.yaml 
-kubectl apply -f services/scoring-service/manifests/deployment.yaml --validate=false
+helm install scoring-service-kbatrakov services/scoring-service/scoring-service-chart
 ```
 
 #### flow-selection-service
 ```bash
 kubectl apply -f services/flow-service/manifests/secret.yaml
-kubectl apply -f services/flow-service/manifests/configmap.yaml 
-kubectl apply -f services/flow-service/manifests/service.yaml 
-kubectl apply -f services/flow-service/manifests/deployment.yaml --validate=false
+helm install flow-selection-service-kbatrakov services/flow-service/flow-service-chart
 ```
 ## Проверка работоспособности
 Пробросить порт сервисов на localhost ВМ
