@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flow-selection-service.fullname.release" .}}
+  namespace: {{ .Values.student.namespace }}
+  labels:
+    {{ include "flow-selection-service.selectorLabels.custom" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "flow-selection-service.selectorLabels.custom" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "flow-selection-service.selectorLabels.custom" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecrets.name }}
+      containers:
+        - name: {{ include "flow-selection-service-container.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{ toYaml .Values.resources | nindent 12 }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probe.liveness.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.probe.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probe.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probe.liveness.failureThreshold }}
+          
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probe.readiness.path }}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.probe.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probe.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probe.readiness.failureThreshold }}
+            
+          env:
+            - name: DATA_SERVICE_MAX_ATTEMPTS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: DATA_SERVICE_MAX_ATTEMPTS
+            - name: DATA_SERVICE_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: DATA_SERVICE_BASE_URL
+            - name: DATA_SERVICE_DELAY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: DATA_SERVICE_DELAY
+            - name: DATA_SERVICE_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: DATA_SERVICE_TIMEOUT
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: REDIS_PORT
+            - name: REDIS_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "flow-selection-service.configmap.name" .}}
+                  key: REDIS_TTL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.redisCredentialName }}
+                  key: {{ .Values.secrets.redisPassword }}   
