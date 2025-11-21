@@ -2,7 +2,8 @@ import re
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.user_data.schemas import (
     GetUserProfileResponse,
@@ -87,3 +88,9 @@ async def get_products_list(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Unexcepted error in user_data_service'
         ) from e
+
+
+@router.get('/metrics')
+async def metrics() -> Response:
+    """Возвращает метрики Prometheus."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
