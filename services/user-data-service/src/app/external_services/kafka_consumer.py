@@ -4,15 +4,24 @@ import logging
 from typing import Any
 
 from aiokafka import AIOKafkaConsumer
+from opentelemetry.context import attach, detach
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_CONSUMER_GROUP_NAME,
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+)
 
 from app.api.user_data.schemas import LoanEntryItem, PutUserProfileRequest, UserProfile
 from app.config.config import Settings
 from app.core.custom_exceptions import LoanAlreadyExistError
 from app.database.database import async_session_maker
+from app.external_services.monitoring.tracing import get_kafka_propagator, get_tracer
 from app.logic.data_service import UserDataService
 
 logger = logging.getLogger(__name__)
-
+tracer = get_tracer()
+propagator = get_kafka_propagator()
 
 class KafkaConsumerService:
     def __init__(self, config: Settings):
@@ -43,16 +52,31 @@ class KafkaConsumerService:
         """Бесконечный цикл, который читает и обрабатывает сообщения из Kafka."""
         try:
             async for msg in self.consumer:
-                try:
-                    message_value = json.loads(msg.value.decode('utf-8'))
-                    logger.info(
-                        f'Получено сообщение key={msg.key} value={message_value}')
+                carrier = {h[0].decode(): h[1].decode() for h in msg.headers if h[0]}
+                ctx = propagator.extract(carrier=carrier)
+                token = attach(ctx)
+                with tracer.start_as_current_span(
+                    f'{msg.topic} process',
+                    attributes={
+                        MESSAGING_SYSTEM: 'kafka',
+                        MESSAGING_DESTINATION_NAME: msg.topic,
+                        MESSAGING_CONSUMER_GROUP_NAME: self.consumer.group_id,
+                        MESSAGING_OPERATION: 'receive',
+                    }
+                ) as span:
+                    try:
+                        message_value = json.loads(msg.value.decode('utf-8'))
+                        logger.info(
+                            f'Получено сообщение key={msg.key} value={message_value}')
 
-                    await self.process_message(message_value)
-                    await self.consumer.commit()
-                except Exception:
-                    logger.exception(
-                        f'Ошибка обработки сообщения: {msg.value}')
+                        await self.process_message(message_value)
+                        await self.consumer.commit()
+                    except Exception as e:
+                        span.record_exception(e)
+                        logger.exception(
+                            f'Ошибка обработки сообщения: {msg.value}')
+                    finally:
+                        detach(token)
         except asyncio.CancelledError:
             logger.info('Задача консьюмера остановлена.')
         finally:

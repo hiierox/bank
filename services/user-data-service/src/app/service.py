@@ -14,14 +14,16 @@ from app.external_services.monitoring.metrics import (
     shutdown_service_metrics,
 )
 from app.external_services.monitoring.metrics_middleware import metrics_middleware
+from app.external_services.monitoring.tracing import setup_tracing
 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logging.info('Starting data-service')
     init_service_metrics()
+    setup_tracing(app)
     kafka_consumer = KafkaConsumerService(
         config=settings
     )
