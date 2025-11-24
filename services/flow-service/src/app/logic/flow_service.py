@@ -45,7 +45,7 @@ class FlowService:
         status_code = '500'
         try:
             response = await self.client.get(f'/user-data?phone={phone}')
-            status_code = response.status_code
+            status_code = str(response.status_code)
         except httpx.RequestError:
             status_code = 'error'
         finally:
@@ -91,6 +91,7 @@ class FlowService:
         products = await self.redis_service.get_products(flow_type)
 
         if products is None:
+            status_code = '500'
             try:
                 response = await self.client.get(f'/api/products?flow_type={flow_type}')
                 response.raise_for_status()
@@ -98,13 +99,13 @@ class FlowService:
             except httpx.RequestError:
                 status_code = 'error'
             finally:
-                 external_service_calls_total.labels(
+                external_service_calls_total.labels(
                     service_name='user-data-service-kbatrakov',
                     method='GET',
                     endpoint='/api/products',
                     status=status_code
                 )
-            await self.redis_service.set_products(flow_type, products)
+            await self.redis_service.set_products(flow_type, products) # type: ignore [arg-type]
 
         return {
             'flow_type': flow_type,
