@@ -27,6 +27,9 @@ from app.core.constants import (
 from app.core.custom_exceptions import UserNotFoundError
 from app.external_service.get_credit_status_service import get_credit_status
 from app.external_service.kafka_producer import KafkaProducerService
+from app.external_service.monitoring.metrics import (
+    external_service_calls_total,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +61,20 @@ class UserScoring:
             'profile': profile_data.model_dump(mode='json') if profile_data else None,
             'history_entry': loan_entry.model_dump(mode='json')
         }
+        status_code = '200'
         try:
             logger.info(f'Preparing to send kafka event: {event_type}')
             await self.kafka_producer.send(key=phone, value=message)
         except KafkaError:
             logger.exception(f'Failed to send kafka event for phone {phone}')
+            status_code = 'fail'
+        finally:
+            external_service_calls_total.labels(
+                service_name='kafka',
+                method='PRODUCE',
+                endpoint=self.kafka_producer.topic,
+                status=status_code
+            ).inc()
 
 
     async def user_scoring_pioneer(
@@ -126,7 +138,21 @@ class UserScoring:
 
     async def user_scoring_repeater(self, phone: str, products: list[Product]
                                     ) -> dict[str, Any]:
-        response = await self.client.get(f'/user-data?phone={phone}')
+        status_code = '500'
+        try:
+            response = await self.client.get(f'/user-data?phone={phone}')
+            status_code = str(response.status_code)
+        except httpx.RequestError as e:
+            status_code = 'fail'
+            raise Exception('user-data-service network error') from e
+        finally:
+            external_service_calls_total.labels(
+                service_name='user-data-service',
+                method='GET',
+                endpoint='/user-data',
+                status=status_code
+            ).inc()
+
         if response.status_code == 404:
             logger.error(
                 f"""UserNotFoundError:

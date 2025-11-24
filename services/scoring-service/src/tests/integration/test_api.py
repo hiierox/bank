@@ -21,6 +21,7 @@ from tests.unit.mock_scoring_data import (
 def client_with_mocked_deps():
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
     mock_kafka_producer = AsyncMock(spec=KafkaProducerService)
+    mock_kafka_producer.topic = "test_kafka_topic"
 
     app.dependency_overrides[get_http_client] = lambda: mock_http_client
     app.dependency_overrides[get_kafka_producer_service] = lambda: mock_kafka_producer

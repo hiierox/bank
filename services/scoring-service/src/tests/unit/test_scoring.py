@@ -23,6 +23,7 @@ from tests.unit.mock_scoring_data import (
 def scoring_service_fixture():
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
     mock_kafka_producer = AsyncMock(spec=KafkaProducerService)
+    mock_kafka_producer.topic = "test_kafka_topic"
     service = UserScoring(
         client=mock_http_client,
         kafka_producer=mock_kafka_producer
