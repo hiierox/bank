@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from httpx import AsyncClient
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.config.config import settings
 
@@ -21,3 +23,9 @@ async def readiness_probe() -> dict[str, str]:
                 status_code=503, detail='user-data-service is not ready!'
             )
     return {'status': 'ready'}
+
+
+@router.get('/metrics')
+async def metrics() -> Response:
+    """Возвращает метрики Prometheus."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

@@ -10,6 +10,9 @@ from tenacity import (
 )
 
 from app.config.config import settings
+from app.external_services.monitoring.metrics import (
+    external_service_calls_total,
+)
 from app.external_services.redis import RedisService
 
 logger = logging.getLogger(__name__)
@@ -39,7 +42,19 @@ class FlowService:
         Делает запрос к data-service c ретраями
         Возвращает тип клиента или выбрасывает исключение
         """
-        response = await self.client.get(f'/user-data?phone={phone}')
+        status_code = '500'
+        try:
+            response = await self.client.get(f'/user-data?phone={phone}')
+            status_code = response.status_code
+        except httpx.RequestError:
+            status_code = 'error'
+        finally:
+            external_service_calls_total.labels(
+                service_name='user-data-service-kbatrakov',
+                method='GET',
+                endpoint='/user-data',
+                status=status_code
+            ).inc()
         if response.status_code == 200:
             return 'repeater'
         elif response.status_code == 404:  # noqa: RET505
@@ -76,9 +91,19 @@ class FlowService:
         products = await self.redis_service.get_products(flow_type)
 
         if products is None:
-            response = await self.client.get(f'/api/products?flow_type={flow_type}')
-            response.raise_for_status()
-            products = response.json()
+            try:
+                response = await self.client.get(f'/api/products?flow_type={flow_type}')
+                response.raise_for_status()
+                products = response.json()
+            except httpx.RequestError:
+                status_code = 'error'
+            finally:
+                 external_service_calls_total.labels(
+                    service_name='user-data-service-kbatrakov',
+                    method='GET',
+                    endpoint='/api/products',
+                    status=status_code
+                )
             await self.redis_service.set_products(flow_type, products)
 
         return {
