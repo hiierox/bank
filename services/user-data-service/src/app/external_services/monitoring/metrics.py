@@ -1,6 +1,6 @@
 from prometheus_client import Counter, Gauge, Histogram
 
-SERVICE_NAME = 'user-data-service'
+SERVICE_NAME = 'user-data-service-kbatrakov'
 
 http_requests_total = Counter(
     'http_requests_total',

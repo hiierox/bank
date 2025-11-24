@@ -16,7 +16,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 logger = logging.getLogger(__name__)
 
-SERVICE_NAME = 'user-data-service'
+SERVICE_NAME = 'user-data-service-kbatrakov'
 OTLP_ENDPOINT = os.environ.get(
     'OTEL_EXPORTER_OTLP_ENDPOINT',
     'http://infra-jaeger-collector.infra.svc.cluster.local:4318'
