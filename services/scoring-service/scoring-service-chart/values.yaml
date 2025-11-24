@@ -60,7 +60,7 @@ service:
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 8000
+  port: 8080
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -97,7 +97,7 @@ kafka:
   groupId: "kbatrakov_user-data_service_group"
 
 dataService:
-  baseUrl: "http://user-data-service-kbatrakov:8000"
+  baseUrl: "http://user-data-service-kbatrakov:8080"
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 probe:

@@ -60,7 +60,7 @@ service:
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 8000
+  port: 8080
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -92,7 +92,7 @@ resources:
     memory: 100Mi
 
 dataService:
-  baseUrl: "http://user-data-service-kbatrakov:8000"
+  baseUrl: "http://user-data-service-kbatrakov:8080"
   maxAttempts: "2"
   delay: "1"
   timeout: "5"

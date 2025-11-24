@@ -25,7 +25,7 @@ spec:
             - containerPort: {{ .Values.service.port }}
           command: ["sh", "-c"]
           args:
-            - "python -m alembic upgrade head && python -m uvicorn app.service:app --host 0.0.0.0 --port 8000"
+            - "python -m alembic upgrade head && python -m uvicorn app.service:app --host 0.0.0.0 --port 8080"
           resources:
             {{ toYaml .Values.resources | nindent 12 }}
           livenessProbe:
