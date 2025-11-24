@@ -48,6 +48,7 @@ class FlowService:
             status_code = str(response.status_code)
         except httpx.RequestError:
             status_code = 'error'
+            raise
         finally:
             external_service_calls_total.labels(
                 service_name='user-data-service-kbatrakov',
