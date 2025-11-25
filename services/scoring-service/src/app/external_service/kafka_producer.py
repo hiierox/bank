@@ -60,7 +60,9 @@ class KafkaProducerService:
 
                 traceparent_value = f'00-{trace_id}-{span_id}-01'
 
-                kafka_headers.append(b'traceparent', traceparent_value.encode('utf-8'))
+                kafka_headers.append(
+                    (b'traceparent', traceparent_value.encode('utf-8'))
+                    )
 
             try:
                 value_bytes = json.dumps(value, default=str).encode('utf-8')
