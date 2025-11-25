@@ -20,7 +20,6 @@ async def get_product_pioneer(
 ) -> dict[str, Any]:
     with tracer.start_as_current_span('/api/scoring/pioneer') as span:
         span.set_attribute('http.method', 'POST')
-        span.set_attribute('user.phone_prefix', request.phone[:4])
         try:
             return await scoring_service.user_scoring_pioneer(
                 user_data=request.user_data,
