@@ -63,7 +63,6 @@ class KafkaConsumerService:
                     kind=SpanKind.CONSUMER
                 ) as span:
                     logger.info('зашли в спан')
-                    
                     span.set_attribute(MESSAGING_SYSTEM, 'kafka')
                     span.set_attribute(MESSAGING_DESTINATION_NAME, msg.topic)
                     span.set_attribute(
