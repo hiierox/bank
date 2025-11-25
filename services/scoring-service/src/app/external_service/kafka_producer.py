@@ -43,7 +43,7 @@ class KafkaProducerService:
         """Отправляет сообщение в топик"""
         logger.info(f'Отправка сообщения в кафку c ключом {key}')
 
-        kafka_headers: list[tuple[bytes, bytes]] = []
+        kafka_headers: list[tuple[str, str]] = []
         parent_span = get_current_span()
         with tracer.start_as_current_span(
             f'{self.topic} send',
@@ -60,7 +60,7 @@ class KafkaProducerService:
 
                 traceparent_value = f'00-{trace_id}-{span_id}-01'
 
-                kafka_headers.append((b'traceparent', traceparent_value.encode()))
+                kafka_headers.append(('traceparent', traceparent_value))
 
             try:
                 value_bytes = json.dumps(value, default=str).encode('utf-8')
