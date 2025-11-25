@@ -50,7 +50,7 @@ class KafkaProducerService:
 
             propagator.inject(headers)
             kafka_headers = [
-                (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items()
+                (k, v.encode('utf-8')) for k, v in headers.items()
                 ]
 
             logger.info(f'Отправка сообщения в кафку c ключом {key}')
