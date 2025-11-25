@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, Response
+from opentelemetry import trace
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api.user_data.schemas import (
@@ -19,7 +20,7 @@ from app.dependencies import get_user_data_service
 from app.logic.data_service import UserDataService
 
 router = APIRouter()
-
+tracer = trace.get_tracer(__name__)
 
 def validate_phone(phone: str) -> str:
     if not re.fullmatch(r'^7\d{10}$', phone):
@@ -32,14 +33,18 @@ async def get_user_data(
     phone: Annotated[str, Depends(validate_phone)],
     user_data_service: UserDataService = Depends(get_user_data_service)
 ) -> GetUserProfileResponse:
-    try:
-        return await user_data_service.get_user_profile(phone)
-    except UserNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail='User not found'
-        ) from e
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    with tracer.start_as_current_span('/user-data') as span:
+        span.set_attribute('http.method', 'GET')
+        span.set_attribute('user.phone_prefix', phone[:4])
+        try:
+            return await user_data_service.get_user_profile(phone)
+        except UserNotFoundError as e:
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail='User not found'
+            ) from e
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail='Unexpected error in user_data_service') from e
 
 
