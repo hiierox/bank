@@ -19,7 +19,7 @@ async def get_product(
     flow_service: FlowService = Depends(get_flow_service)
 ) -> dict[str, Any]:
     """
-    Возвращает клиенту список доступных ему продуктов.
+    Возвращает клиенту список доступных ему продуктов
     """
     with tracer.start_as_current_span('/api/products') as span:
         span.set_attribute('http.method', 'PUT')
