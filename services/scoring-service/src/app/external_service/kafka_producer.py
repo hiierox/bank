@@ -4,6 +4,12 @@ from typing import Any
 
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaError
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_KAFKA_MESSAGE_KEY,
+    MESSAGING_SYSTEM,
+)
+from opentelemetry.trace import SpanKind
 
 from app.config.config import Settings
 from app.external_service.monitoring.tracing import get_kafka_propagator, get_tracer
@@ -34,18 +40,33 @@ class KafkaProducerService:
 
     async def send(self, key: str, value: dict[str, Any]) -> None:
         """Отправляет сообщение в топик"""
-        logger.info(f'Отправка сообщения в кафку c ключом {key}')
-        try:
-            value_bytes = json.dumps(value, default=str).encode('utf-8')
-            key_bytes = key.encode('utf-8')
+        headers: dict[str, str] = {}
+        with tracer.start_as_current_span(
+            f'{self.topic} send', kind=SpanKind.PRODUCER
+        ) as span:
+            span.set_attribute(MESSAGING_SYSTEM, 'kafka')
+            span.set_attribute(MESSAGING_DESTINATION_NAME, self.topic)
+            span.set_attribute(MESSAGING_KAFKA_MESSAGE_KEY, key)
 
-            await self.producer.send_and_wait(
-                topic=self.topic,
-                value=value_bytes,
-                key=key_bytes,
-            )
-        except KafkaError:
-            logger.exception(f'Ошибка отправки сообщения в кафку c ключом {key}')
-            raise
+            propagator.inject(headers)
+            kafka_headers = [
+                (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items()
+                ]
+
+            logger.info(f'Отправка сообщения в кафку c ключом {key}')
+            try:
+                value_bytes = json.dumps(value, default=str).encode('utf-8')
+                key_bytes = key.encode('utf-8')
+
+                await self.producer.send_and_wait(
+                    topic=self.topic,
+                    value=value_bytes,
+                    key=key_bytes,
+                    headers=kafka_headers
+                )
+            except KafkaError as e:
+                span.record_exception(e)
+                logger.exception(f'Ошибка отправки сообщения в кафку c ключом {key}')
+                raise
 
         logger.info(f'Сообщение c ключом {key} отправлено в кафку')

@@ -4,6 +4,12 @@ import logging
 from typing import Any
 
 from aiokafka import AIOKafkaConsumer
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_KAFKA_MESSAGE_KEY,
+    MESSAGING_SYSTEM,
+)
+from opentelemetry.trace import SpanKind
 
 from app.api.user_data.schemas import LoanEntryItem, PutUserProfileRequest, UserProfile
 from app.config.config import Settings
@@ -45,16 +51,30 @@ class KafkaConsumerService:
         """Бесконечный цикл, который читает и обрабатывает сообщения из Kafka."""
         try:
             async for msg in self.consumer:
-                try:
-                    message_value = json.loads(msg.value.decode('utf-8'))
-                    logger.info(
-                        f'Получено сообщение key={msg.key} value={message_value}')
+                carrier = {k.decode('utf-8'): v.decode('utf-8') for k, v in msg.headers}
+                context = propagator.extract(carrier)
 
-                    await self.process_message(message_value)
-                    await self.consumer.commit()
-                except Exception:
-                    logger.exception(
-                        f'Ошибка обработки сообщения: {msg.value}')
+                with tracer.start_as_current_span(
+                    f'{msg.topic} process',
+                    context=context,
+                    kind=SpanKind.CONSUMER
+                ) as span:
+                    span.set_attribute(MESSAGING_SYSTEM, 'kafka')
+                    span.set_attribute(MESSAGING_DESTINATION_NAME, msg.topic)
+                    span.set_attribute(
+                        MESSAGING_KAFKA_MESSAGE_KEY, msg.key.decode('utf-8')
+                    )
+                    try:
+                        message_value = json.loads(msg.value.decode('utf-8'))
+                        logger.info(
+                            f'Получено сообщение key={msg.key} value={message_value}')
+
+                        await self.process_message(message_value)
+                        await self.consumer.commit()
+                    except Exception as e:
+                        span.record_exception(e)
+                        logger.exception(
+                            f'Ошибка обработки сообщения: {msg.value}')
         except asyncio.CancelledError:
             logger.info('Задача консьюмера остановлена.')
         finally:

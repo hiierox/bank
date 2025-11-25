@@ -97,6 +97,7 @@ class FlowService:
                 response = await self.client.get(f'/api/products?flow_type={flow_type}')
                 response.raise_for_status()
                 products = response.json()
+                status_code = str(response.status_code)
             except httpx.RequestError:
                 status_code = 'error'
             finally:
