@@ -49,22 +49,28 @@ class KafkaConsumerService:
 
     async def consume(self) -> None:
         """Бесконечный цикл, который читает и обрабатывает сообщения из Kafka."""
+        logger.info('консьюмер начал принимать.')
+
         try:
             async for msg in self.consumer:
                 carrier = {k.decode('utf-8'): v.decode('utf-8') for k, v in msg.headers}
                 context = propagator.extract(carrier)
+                logger.info('Проходимся по сообщениям')
 
                 with tracer.start_as_current_span(
                     f'{msg.topic} process',
                     context=context,
                     kind=SpanKind.CONSUMER
                 ) as span:
+                    logger.info('зашли в спан')
+                    
                     span.set_attribute(MESSAGING_SYSTEM, 'kafka')
                     span.set_attribute(MESSAGING_DESTINATION_NAME, msg.topic)
                     span.set_attribute(
                         MESSAGING_KAFKA_MESSAGE_KEY, msg.key.decode('utf-8')
                     )
                     try:
+
                         message_value = json.loads(msg.value.decode('utf-8'))
                         logger.info(
                             f'Получено сообщение key={msg.key} value={message_value}')
