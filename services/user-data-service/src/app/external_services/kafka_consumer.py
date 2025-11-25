@@ -35,7 +35,8 @@ class KafkaConsumerService:
     async def start(self) -> None:
         """Запускает консьюмер и фоновую задачу по чтению сообщений."""
         logger.info('Starting Kafka consumer...........')
-        await self.consumer.start()
+        with tracer.start_as_current_span('kafka.consumer.start.wrapper'):
+            await self.consumer.start()
         self._task = asyncio.create_task(self.consume())
         logger.info('Kafka consumer started.')
 
