@@ -54,31 +54,38 @@ async def put_user_data(
     user_data_service: UserDataService = Depends(
         get_user_data_service)
 ) -> JSONResponse:
-    try:
+    with tracer.start_as_current_span('/user-data') as span:
+        span.set_attribute('http.method', 'PUT')
+        span.set_attribute('user.phone_prefix', request.phone[:4])
+        try:
 
-        is_new_user = await user_data_service.put_user_data(request.phone, request)
-        response_body = {'status': 'success'}
-        status_code = status.HTTP_201_CREATED if is_new_user else status.HTTP_200_OK
-        return JSONResponse(content=response_body, status_code=status_code)
+            is_new_user = await user_data_service.put_user_data(request.phone, request)
+            response_body = {'status': 'success'}
+            status_code = status.HTTP_201_CREATED if is_new_user else status.HTTP_200_OK
+            return JSONResponse(content=response_body, status_code=status_code)
 
-    except UserNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail='User not found'
-        ) from e
-    except LoanAlreadyExistError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail='Loan already exists'
-        ) from e
-    except LoanNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail='Loan not found'
-        ) from e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='Unexpected error in user_data_service'
-        ) from e
+        except UserNotFoundError as e:
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail='User not found'
+            ) from e
+        except LoanAlreadyExistError as e:
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail='Loan already exists'
+            ) from e
+        except LoanNotFoundError as e:
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail='Loan not found'
+            ) from e
+        except Exception as e:
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail='Unexpected error in user_data_service'
+            ) from e
 
 
 @router.get('/api/products')
@@ -86,13 +93,16 @@ async def get_products_list(
     flow_type: Literal['pioneer', 'repeater'] | None = None,
     user_data_service: UserDataService = Depends(get_user_data_service)
 ) -> list[ProductResponse] | dict[str, str]:
-    try:
-        return await user_data_service.get_products_list(flow_type)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail='Unexcepted error in user_data_service'
-        ) from e
+     with tracer.start_as_current_span('/api/products') as span:
+        span.set_attribute('http.method', 'GET')
+        try:
+            return await user_data_service.get_products_list(flow_type)
+        except Exception as e:
+            span.record_exception(e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail='Unexcepted error in user_data_service'
+            ) from e
 
 
 @router.get('/metrics')
