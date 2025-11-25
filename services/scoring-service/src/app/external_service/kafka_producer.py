@@ -4,13 +4,6 @@ from typing import Any
 
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaError
-from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
-    MESSAGING_DESTINATION_NAME,
-    MESSAGING_KAFKA_MESSAGE_KEY,
-    MESSAGING_OPERATION,
-    MESSAGING_SYSTEM,
-)
-from opentelemetry.trace import get_current_span
 
 from app.config.config import Settings
 from app.external_service.monitoring.tracing import get_kafka_propagator, get_tracer
@@ -42,39 +35,17 @@ class KafkaProducerService:
     async def send(self, key: str, value: dict[str, Any]) -> None:
         """Отправляет сообщение в топик"""
         logger.info(f'Отправка сообщения в кафку c ключом {key}')
+        try:
+            value_bytes = json.dumps(value, default=str).encode('utf-8')
+            key_bytes = key.encode('utf-8')
 
-        kafka_headers: list[tuple[bytes, str]] = []
-        parent_span = get_current_span()
-        with tracer.start_as_current_span(
-            f'{self.topic} send',
-            attributes={
-                MESSAGING_SYSTEM: 'kafka',
-                MESSAGING_DESTINATION_NAME: self.topic,
-                MESSAGING_OPERATION: 'send',
-                MESSAGING_KAFKA_MESSAGE_KEY: key
-            }
-        ) as span:
-            if parent_span.get_span_context().is_valid:
-                trace_id = format(parent_span.get_span_context().trace_id, '032x')
-                span_id = format(span.get_span_context().span_id, '016x')
-
-                traceparent_value = f'00-{trace_id}-{span_id}-01'
-
-                kafka_headers.append((b'traceparent', traceparent_value))
-
-            try:
-                value_bytes = json.dumps(value, default=str).encode('utf-8')
-                key_bytes = key.encode('utf-8')
-
-                await self.producer.send_and_wait(
-                    topic=self.topic,
-                    value=value_bytes,
-                    key=key_bytes,
-                    headers=kafka_headers
-                )
-            except KafkaError:
-                span.record_exception(KafkaError)
-                logger.exception(f'Ошибка отправки сообщения в кафку c ключом {key}')
-                raise
+            await self.producer.send_and_wait(
+                topic=self.topic,
+                value=value_bytes,
+                key=key_bytes,
+            )
+        except KafkaError:
+            logger.exception(f'Ошибка отправки сообщения в кафку c ключом {key}')
+            raise
 
         logger.info(f'Сообщение c ключом {key} отправлено в кафку')
