@@ -62,10 +62,10 @@ services:
       dockerfile: Dockerfile
     command: >
      sh -c "python -m alembic upgrade head &&
-           python -m uvicorn app.service:app --host 0.0.0.0 --port 8000"
+           python -m uvicorn app.service:app --host 0.0.0.0 --port 8080"
     restart: unless-stopped
     ports:
-      - "8002:8000"
+      - "8002:8080"
     depends_on:
       - postgres
       - kafka
@@ -81,7 +81,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports: 
-      - "8001:8000"
+      - "8001:8080"
     depends_on:
       - kafka
       - data-service
@@ -89,7 +89,9 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
       KAFKA_TOPIC: "scoring_results"
       KAFKA_GROUP_ID: "data_service_group"
-      DATA_SERVICE_BASE_URL: "http://data-service:8000"
+      DATA_SERVICE_BASE_URL: "http://data-service:8080"
+      ANTIFRAUD_SERVICE_BASE_URL: "http://antifraud-service:8080"
+      ANTIFRAUD_SERVICE_TIMEOUT: 5
     
   flow-service:
     build:
@@ -97,15 +99,32 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8000:8080"
     depends_on:
       - data-service
     
     environment:
       DATA_SERVICE_MAX_ATTEMPTS: 2
       DATA_SERVICE_DELAY: 1
-      DATA_SERVICE_BASE_URL: "http://data-service:8000"
+      DATA_SERVICE_BASE_URL: "http://data-service:8080"
       DATA_SERVICE_TIMEOUT:  5
       REDIS_HOST: 'redis'
       REDIS_PORT: "6379"
       REDIS_TTL: 60
+
+  antifraud-service:
+    build:
+      context: ./services/antifraud-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8003:8080"
+    depends_on:
+      - redis
+      - data-service
+
+    environment:
+      DATA_SERVICE_BASE_URL: "http://data-service:8080"
+      DATA_SERVICE_TIMEOUT:  5
+      REDIS_HOST: 'redis'
+      REDIS_PORT: "6379"

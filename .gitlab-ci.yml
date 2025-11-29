@@ -187,6 +187,62 @@ tests_data:
       when: never
     - when: never
 
+linting_antifraud:
+  extends: .base
+  stage: linting
+  script:
+    - cd services/antifraud-service
+    - poetry install --no-root
+    - poetry run ruff check src/
+  rules:
+    - changes:
+        - "services/antifraud-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/antifraud-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+mypy_antifraud:
+  extends: .base
+  stage: type-checking
+  script:
+    - cd services/antifraud-service
+    - poetry install --no-root
+    - poetry run mypy src/
+  rules:
+    - changes:
+        - "services/antifraud-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/antifraud-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+tests_antifraud:
+  extends: .base
+  stage: testing
+  script:
+    - cd services/antifraud-service
+    - poetry install --no-root
+    - poetry run pytest
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  rules:
+    - changes:
+        - "services/antifraud-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/antifraud-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+  
 .docker-build:
   tags:
     - shell
@@ -223,6 +279,12 @@ build_flow_selection_service:
   variables:
     SERVICE_PATH: "services/flow-service"
     IMAGE_NAME: "flow-service"
+
+build_antifraud_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/antifraud-service"
+    IMAGE_NAME: "antifraud-service"
 
 cache:
   key:
