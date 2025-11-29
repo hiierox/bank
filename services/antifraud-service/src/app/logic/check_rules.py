@@ -176,7 +176,6 @@ class RepeaterChecks:
         if profile_data is not None and cls._is_recent_loan(
             loan_data[-1].issue_date, check_date
         ):
-            logger.info(new_updated_profile.monthly_income)
             reasons.append(
                 cls.check_income_change(
                     new_updated_profile.monthly_income, profile_data.monthly_income

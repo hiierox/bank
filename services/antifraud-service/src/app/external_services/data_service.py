@@ -26,7 +26,6 @@ class DataService:
 
         try:
             response = await self.client.get(endpoint)
-            logger.info(response.json())
 
             if response.status_code == 404:
                 logger.error(
@@ -37,6 +36,7 @@ class DataService:
             response.raise_for_status()
 
             data = response.json()
+            logger.info(f'{DATA_SERVICE_NAME} успешно вернул профиль')
             return DataServiceResponse.model_validate(data)
 
         except (ConnectError, TimeoutException) as e:
