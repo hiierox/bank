@@ -1,1 +1,1 @@
-PYTHONPATH=src poetry run uvicorn app.service:app --reload --port 8001
+PYTHONPATH=src poetry run uvicorn app.service:app --reload --port 8005

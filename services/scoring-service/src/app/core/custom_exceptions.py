@@ -6,3 +6,8 @@ class LoanAlreadyExistsError(Exception):
     """
     Исключение в случае, если кредит уже записан в историю
     """
+
+class IntegrationError(Exception):
+    """
+    Ошибка интеграции c антифрод севрисом
+    """

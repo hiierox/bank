@@ -10,5 +10,7 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = 'localhost:9092'
     KAFKA_TOPIC: str = 'default_topic'
     KAFKA_TIMEOUT_MS: int = 100
+    ANTIFRAUD_SERVICE_BASE_URL: str = 'http://localhost:8003'
+    ANTIFRAUD_SERVICE_TIMEOUT: int = 5
 
 settings = Settings()

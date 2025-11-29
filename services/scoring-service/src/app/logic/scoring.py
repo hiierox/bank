@@ -7,10 +7,12 @@ import httpx
 from aiokafka.errors import KafkaError
 
 from app.api.scoring.schemas import (
+    AntifraudCheckResponse,
     CreditHistoryItem,
     Product,
     PutUserData,
     UserData,
+    UserDataFromDataService,
     UserProfileForDataService,
 )
 from app.core.constants import (
@@ -24,12 +26,9 @@ from app.core.constants import (
     REJECT_RESPONSE,
     REPEATER_PRODUCTS_POINTS,
 )
-from app.core.custom_exceptions import UserNotFoundError
-from app.external_service.get_credit_status_service import get_credit_status
+from app.core.custom_exceptions import IntegrationError, UserNotFoundError
+from app.external_service.antifraud_service import AntifraudService
 from app.external_service.kafka_producer import KafkaProducerService
-from app.external_service.monitoring.metrics import (
-    external_service_calls_total,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +37,12 @@ class UserScoring:
     def __init__(
         self,
         client: httpx.AsyncClient,
-        kafka_producer: KafkaProducerService
+        kafka_producer: KafkaProducerService,
+        antifraud_service: AntifraudService
     ):
         self.client = client
         self.kafka_producer = kafka_producer
+        self.antifraud_service = antifraud_service
 
     async def _send_kafka_event(
         self,
@@ -61,20 +62,12 @@ class UserScoring:
             'profile': profile_data.model_dump(mode='json') if profile_data else None,
             'history_entry': loan_entry.model_dump(mode='json')
         }
-        status_code = '200'
         try:
             logger.info(f'Preparing to send kafka event: {event_type}')
             await self.kafka_producer.send(key=phone, value=message)
         except KafkaError:
             logger.exception(f'Failed to send kafka event for phone {phone}')
-            status_code = 'fail'
-        finally:
-            external_service_calls_total.labels(
-                service_name='kafka',
-                method='PRODUCE',
-                endpoint=self.kafka_producer.topic,
-                status=status_code
-            ).inc()
+
 
 
     async def user_scoring_pioneer(
@@ -85,10 +78,21 @@ class UserScoring:
         """
         Скоринг клиента и возврат доступного ему продукта
         """
-        if (user_data.age < 18 or
-            user_data.monthly_income < 1000000 or
-                user_data.employment_type == 'unemployed'):
+        try:
+            antifraud_response_dict = await self.antifraud_service.check_pioneer(
+                user_data
+                )
+            antifraud_response = AntifraudCheckResponse.model_validate(
+                antifraud_response_dict
+                )
+        except IntegrationError as e:
+            logger.error(f'Антифрод ошибка: {e}')
+            raise e
+
+        if antifraud_response.decision == 'rejected':
+            logger.info(f'Антифрод не пройден. Причины: {antifraud_response.reasons}')
             return REJECT_RESPONSE
+        logger.info('Атифрод успешно пройден')
 
         points = 0
 
@@ -138,20 +142,11 @@ class UserScoring:
 
     async def user_scoring_repeater(self, phone: str, products: list[Product]
                                     ) -> dict[str, Any]:
-        status_code = '500'
         try:
             response = await self.client.get(f'/user-data?phone={phone}')
-            status_code = str(response.status_code)
         except httpx.RequestError as e:
-            status_code = 'fail'
             raise Exception('user-data-service network error') from e
-        finally:
-            external_service_calls_total.labels(
-                service_name='user-data-service',
-                method='GET',
-                endpoint='/user-data',
-                status=status_code
-            ).inc()
+
 
         if response.status_code == 404:
             logger.error(
@@ -173,34 +168,39 @@ class UserScoring:
         user_profile_json = response.json()
         user_dict = user_profile_json['profile']
         user_dict['phone'] = user_profile_json['phone']
-        user_profile = UserData.model_validate(user_dict)
+        user_profile = UserDataFromDataService.model_validate(user_dict)
         credit_history = [
             CreditHistoryItem.model_validate(
                 item
             ) for item in user_profile_json['history']
         ]
+
+        logger.info('Заход в антифрод')
+        try:
+            antifraud_response_dict = await self.antifraud_service.check_repeater(
+                phone=phone,
+                new_updated_profile=user_profile
+            )
+            antifraud_response = AntifraudCheckResponse.model_validate(
+                antifraud_response_dict
+                )
+        except IntegrationError as e:
+            logger.error(f'Антифрод ошибка: {e}')
+            raise e
+        except Exception as e:
+            logger.error(f'Что-то произошло в вызове антифрода: {e}')
+            raise e
+
+        if antifraud_response.decision == 'rejected':
+            logger.info(f'Антифрод не пройден. Причины: {antifraud_response.reasons}')
+            return REJECT_RESPONSE
+        logger.info('Антифрод успешно пройден')
+
         points = 0
 
         if credit_history:
             first_credit = credit_history[0]
             last_credit = credit_history[-1]
-            last_credit_status = await get_credit_status(last_credit)
-
-            if user_profile.age < 18:
-                return REJECT_RESPONSE
-
-            days_since_credit_issued = (
-                datetime.now(tz=ZoneInfo('UTC')).date() -
-                last_credit.issue_date
-            ).days
-
-            is_credit_open_more_than_180_days = (
-                last_credit_status == 'open'
-                and (days_since_credit_issued > 180)
-            )
-
-            if is_credit_open_more_than_180_days:
-                return REJECT_RESPONSE
 
             if (datetime.now(tz=ZoneInfo('UTC')).date() - first_credit.issue_date >
                     timedelta(days=FIRST_CREDIT_AGE_DAYS)):

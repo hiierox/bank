@@ -19,6 +19,14 @@ class UserData(BaseModel):
         return value * 100
 
 
+class UserDataFromDataService(BaseModel):
+    phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
+    age: int = Field(..., ge=0, le=120)
+    monthly_income: int = Field(..., ge=0)
+    employment_type: Literal['full_time', 'freelance', 'unemployed']
+    has_property: bool
+
+
 class Product(BaseModel):
     name: str
     max_amount: int = Field(..., gt=0)
@@ -67,3 +75,8 @@ class GetUserProfileResponse(BaseModel):
     phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
     profile: UserProfileForDataService
     history: list[CreditHistoryItem] = []
+
+
+class AntifraudCheckResponse(BaseModel):
+    decision: Literal['passed', 'rejected']
+    reasons: list[str]
