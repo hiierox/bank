@@ -11,10 +11,51 @@ from app.core.constants import (
 from app.logic.check_rules import CommonChecks
 
 
-@pytest.fixture
-def mock_profile_data():
-    """Профиль, который должен пройти все CommonChecks."""
-    return UserProfileData(
+@pytest.mark.parametrize(
+        ('age', 'expected_reason'),
+        [
+            (B1_MIN_AGE + 1, None),
+            (B1_MIN_AGE - 1, REJECT_REASON_B1)
+        ],
+        ids=('acceptable age', 'Too young age')
+)
+def test_check_min_age_boundary_values(age, expected_reason):
+    """B1: Граничные значения возраста."""
+    result = CommonChecks.check_min_age(age)
+    assert result == expected_reason
+
+
+@pytest.mark.parametrize(
+        ('monthly_income', 'expected_reason'),
+        [
+            (B2_MIN_INCOME + 1, None),
+            (B2_MIN_INCOME - 1, REJECT_REASON_B2)
+        ],
+        ids=('Enough income', 'Low income')
+)
+def test_check_min_income_boundary_values(monthly_income, expected_reason):
+    """B2: Граничные значения дохода."""
+    result = CommonChecks.check_min_income(monthly_income)
+    assert result == expected_reason
+
+
+@pytest.mark.parametrize(
+        ('employment_status', 'expected_reason'),
+        [
+            ('full_time', None),
+            ('unemployed', REJECT_REASON_B3)
+        ],
+        ids=('full_time', 'unemployed')
+)
+def test_check_employment_status(employment_status, expected_reason):
+    """B3: Проверка занятости."""
+    result = CommonChecks.check_employment_status(employment_status)
+    assert result == expected_reason
+
+
+def test_common_checks_run_happy_path():
+    """CommonChecks.run возвращает пустой список при успехе."""
+    profile = UserProfileData(
         phone='71112223334',
         age=B1_MIN_AGE + 5,
         monthly_income=B2_MIN_INCOME + 5000,
@@ -22,43 +63,8 @@ def mock_profile_data():
         has_property=True,
     )
 
-
-def test_check_min_age_passed(mock_profile_data):
-    """B1: Возраст выше минимального."""
-    result = CommonChecks.check_min_age(mock_profile_data.age)
-    assert result is None
-
-def test_check_min_age_rejected_boundary():
-    """B1: Возраст на 1 год меньше минимума"""
-    result = CommonChecks.check_min_age(B1_MIN_AGE - 1)
-    assert result == REJECT_REASON_B1
-
-
-def test_check_min_income_passed(mock_profile_data):
-    """B2: Доход выше минимального."""
-    result = CommonChecks.check_min_income(mock_profile_data.monthly_income)
-    assert result is None
-
-def test_check_min_income_rejected_boundary():
-    """B2: Доход на 1 меньше минимума."""
-    result = CommonChecks.check_min_income(B2_MIN_INCOME - 1)
-    assert result == REJECT_REASON_B2
-
-
-def test_check_employment_status_passed():
-    """B3: Статус full_time подходит."""
-    result = CommonChecks.check_employment_status('full_time')
-    assert result is None
-
-def test_check_employment_status_rejected():
-    """B3: Статус unemployed не подходит."""
-    result = CommonChecks.check_employment_status('unemployed')
-    assert result == REJECT_REASON_B3
-
-
-def test_common_checks_run_happy_path(mock_profile_data):
-    """CommonChecks.run возвращает пустой список при успехе."""
-    reasons = CommonChecks.run(mock_profile_data)
+    reasons = CommonChecks.run(profile)
+    
     assert reasons == []
 
 def test_common_checks_run_multiple_rejected():
