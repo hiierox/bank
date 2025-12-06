@@ -30,7 +30,7 @@ class AntifraudService:
         """Получает текущую дату в UTC"""
         return datetime.now(tz=ZoneInfo('UTC')).date()
 
-    async def _process_checks(
+    async def _finalize_decision_and_increment_counter(
             self, reasons: list[str], phone: str
         ) -> AntifraudDecisionResponse:
         """
@@ -68,7 +68,7 @@ class AntifraudService:
             application_count=application_count
         ))
 
-        return await self._process_checks(all_reasons, phone)
+        return await self._finalize_decision_and_increment_counter(all_reasons, phone)
 
 
     async def check_repeater(
@@ -90,4 +90,4 @@ class AntifraudService:
             check_date=current_date
         ))
 
-        return await self._process_checks(all_reasons, phone)
+        return await self._finalize_decision_and_increment_counter(all_reasons, phone)
