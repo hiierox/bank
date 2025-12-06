@@ -2,12 +2,12 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from app.api.antifraud.schemas import (
-    AntifraudDecision,
+    AntifraudDecisionResponse,
     PioneerCheckRequest,
     RepeaterCheckRequest,
 )
-from app.external_services.data_service import DataService
-from app.external_services.redis_service import RedisService
+from app.external_services.data_service.logic.data_service import DataService
+from app.external_services.redis_service.redis_service import RedisService
 from app.logic.check_rules import (
     CommonChecks,
     PioneerChecks,
@@ -31,26 +31,29 @@ class AntifraudService:
 
     async def _process_checks(
             self, reasons: list[str], phone: str
-        ) -> AntifraudDecision:
+        ) -> AntifraudDecisionResponse:
         """
         Общая логика агрегации результатов
         """
         final_reasons = [r for r in reasons if r is not None]
 
         if final_reasons:
-            return AntifraudDecision(
+            return AntifraudDecisionResponse(
                 decision='rejected',
                 reasons=final_reasons
             )
 
         await self.redis_service.increment_application_count(phone)
 
-        return AntifraudDecision(
+        return AntifraudDecisionResponse(
             decision='passed',
             reasons=[]
         )
 
-    async def check_pioneer(self, request: PioneerCheckRequest) -> AntifraudDecision:
+    async def check_pioneer(
+            self,
+            request: PioneerCheckRequest
+        ) -> AntifraudDecisionResponse:
         """Обрабатывает антифрод проверки для pioneer"""
         user_data = request.user_data
         phone = user_data.phone
@@ -67,7 +70,10 @@ class AntifraudService:
         return await self._process_checks(all_reasons, phone)
 
 
-    async def check_repeater(self, request: RepeaterCheckRequest) -> AntifraudDecision:
+    async def check_repeater(
+            self,
+            request: RepeaterCheckRequest
+        ) -> AntifraudDecisionResponse:
         """Обрабатывает антифрод проверки для repeater"""
         new_updated_profile = request.new_updated_profile
         phone = request.phone

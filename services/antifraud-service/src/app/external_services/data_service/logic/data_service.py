@@ -2,8 +2,10 @@ import logging
 
 from httpx import AsyncClient, ConnectError, HTTPStatusError, TimeoutException
 
-from app.api.antifraud.schemas import DataServiceResponse
 from app.core.exceptions import DataServiceNotFoundError, IntegrationError
+from app.external_services.data_service.api.schemas import (
+    UserDataFromDataServiceResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class DataService:
     def __init__(self, client: AsyncClient):
         self.client = client
 
-    async def get_user_profile(self, phone: str) -> DataServiceResponse:
+    async def get_user_profile(self, phone: str) -> UserDataFromDataServiceResponse:
         """
         Получает профиль пользователя.
         Выбрасывает DataServiceNotFoundError (404) или
@@ -37,7 +39,7 @@ class DataService:
 
             data = response.json()
             logger.info(f'{DATA_SERVICE_NAME} успешно вернул профиль')
-            return DataServiceResponse.model_validate(data)
+            return UserDataFromDataServiceResponse.model_validate(data)
 
         except (ConnectError, TimeoutException) as e:
             logger.error(f'{DATA_SERVICE_NAME} connection/timeout error: {e}')

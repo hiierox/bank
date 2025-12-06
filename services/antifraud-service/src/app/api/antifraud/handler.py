@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.antifraud.schemas import (
-    AntifraudDecision,
+    AntifraudDecisionResponse,
     PioneerCheckRequest,
     RepeaterCheckRequest,
 )
@@ -13,12 +13,13 @@ router = APIRouter()
 
 
 @router.post(
-    '/pioneer/check', response_model=AntifraudDecision, status_code=status.HTTP_200_OK
+    '/pioneer/check', response_model=AntifraudDecisionResponse,
+    status_code=status.HTTP_200_OK
 )
 async def check_pioneer(
     request: PioneerCheckRequest,
     antifraud_service: AntifraudService = Depends(get_antifraud_service),
-) -> AntifraudDecision:
+) -> AntifraudDecisionResponse:
     """Антифрод проверка для pioneer"""
     try:
         return await antifraud_service.check_pioneer(request)
@@ -34,12 +35,13 @@ async def check_pioneer(
 
 
 @router.post(
-    '/repeater/check', response_model=AntifraudDecision, status_code=status.HTTP_200_OK
+    '/repeater/check', response_model=AntifraudDecisionResponse,
+    status_code=status.HTTP_200_OK
 )
 async def check_repeater(
     request: RepeaterCheckRequest,
     antifraud_service: AntifraudService = Depends(get_antifraud_service),
-) -> AntifraudDecision:
+) -> AntifraudDecisionResponse:
     """Антифрод проверка для repeater"""
     try:
         return await antifraud_service.check_repeater(request)

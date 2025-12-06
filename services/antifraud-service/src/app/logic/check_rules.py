@@ -2,7 +2,6 @@ import logging
 from datetime import date, timedelta
 
 from app.api.antifraud.schemas import (
-    DataServiceResponse,
     LoanItem,
     UserProfileData,
 )
@@ -24,6 +23,9 @@ from app.core.constants import (
     REJECT_REASON_R2_EMPLOYMENT_CHANGE,
     REJECT_REASON_R2_INCOME_FALL,
     REJECT_REASON_R2_INCOME_GROWTH,
+)
+from app.external_services.data_service.api.schemas import (
+    UserDataFromDataServiceResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -159,7 +161,7 @@ class RepeaterChecks:
     def run(
         cls,
         new_updated_profile: UserProfileData,
-        data_service_response: DataServiceResponse,
+        data_service_response: UserDataFromDataServiceResponse,
         check_date: date
     ) -> list[str]:
         """

@@ -3,10 +3,8 @@ from datetime import date, timedelta
 import pytest
 
 from app.api.antifraud.schemas import (
-    DataServiceResponse,
     LoanItem,
     UserProfileData,
-    UserProfileFromDataService,
 )
 from app.core.constants import (
     R2_PROFILE_CHECK_DAYS,
@@ -16,7 +14,10 @@ from app.core.constants import (
     REJECT_REASON_R2_INCOME_GROWTH,
 )
 from app.logic.check_rules import RepeaterChecks
-
+from app.external_services.data_service.api.schemas import (
+    UserDataFromDataServiceResponse,
+    UserProfileFromDataService,
+)
 TODAY = date(2025, 12, 1)
 
 
@@ -59,7 +60,7 @@ def mock_past_profile():
 @pytest.fixture
 def mock_data_service_response(mock_clean_history):
     """Ответ data-service для прохождения всех RepeaterChecks."""
-    return DataServiceResponse(
+    return UserDataFromDataServiceResponse(
         phone='79001234567',
         profile=UserProfileFromDataService(
             age=30,
@@ -167,7 +168,7 @@ def test_repeater_checks_run_rejected_all(mock_data_service_response):
         }
     )
 
-    response_for_rejected = DataServiceResponse(
+    response_for_rejected = UserDataFromDataServiceResponse(
         phone='79001234567',
         profile=UserProfileFromDataService(
             age=30,

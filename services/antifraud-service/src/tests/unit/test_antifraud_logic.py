@@ -8,8 +8,8 @@ from app.api.antifraud.schemas import (
     UserProfileData,
 )
 from app.core.exceptions import DataServiceNotFoundError
-from app.external_services.data_service import DataService
-from app.external_services.redis_service import RedisService
+from app.external_services.data_service.logic.data_service import DataService
+from app.external_services.redis_service.redis_service import RedisService
 from app.logic.antifraud_logic import AntifraudService
 
 

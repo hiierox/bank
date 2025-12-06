@@ -6,15 +6,17 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.api.antifraud.schemas import (
-    DataServiceResponse,
     LoanItem,
-    UserProfileFromDataService,
 )
 from app.core.constants import REJECT_REASON_P1
 from app.core.exceptions import DataServiceNotFoundError, IntegrationError
 from app.dependencies import get_antifraud_service
-from app.external_services.data_service import DataService
-from app.external_services.redis_service import RedisService
+from app.external_services.data_service.logic.data_service import DataService
+from app.external_services.redis_service.redis_service import RedisService
+from app.external_services.data_service.api.schemas import (
+    UserDataFromDataServiceResponse,
+    UserProfileFromDataService,
+)
 from app.logic.antifraud_logic import AntifraudService
 from app.service import app
 
@@ -92,7 +94,7 @@ async def test_pioneer_api_rejected_path_limit_exceeded(client):
 
 @pytest.mark.asyncio
 async def test_repeater_api_happy_path_passed(client):
-    MOCK_DATA_SERVICE.get_user_profile.return_value = DataServiceResponse(
+    MOCK_DATA_SERVICE.get_user_profile.return_value = UserDataFromDataServiceResponse(
         phone=TEST_PHONE,
         profile=UserProfileFromDataService(
             age=30,
