@@ -37,22 +37,7 @@ class LoanItem(BaseModel):
     close_date: date | None = None
 
 
-class UserProfileFromDataService(BaseModel):
-    """Схема профиля пользователя,полученного из БД"""
-    age: int = Field(..., ge=0, le=120)
-    monthly_income: int = Field(..., gt=0)
-    employment_type: Literal['full_time', 'freelance', 'unemployed']
-    has_property: bool
-
-
-class DataServiceResponse(BaseModel):
-    """ответ от data-service"""
-    phone: str = Field(pattern=PHONE_REG, min_length=11, max_length=11)
-    profile: UserProfileFromDataService
-    history: list[LoanItem] = []
-
-
-class AntifraudDecision(BaseModel):
+class AntifraudDecisionResponse(BaseModel):
     """Финальный ответ от антифрод-сервиса"""
     decision: Literal['passed', 'rejected']
     reasons: list[str]
