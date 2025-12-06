@@ -1,4 +1,5 @@
 from datetime import date
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -37,7 +38,13 @@ class LoanItem(BaseModel):
     close_date: date | None = None
 
 
+class AnfifraudDecision(str, Enum):
+    """Возможные решения антифрод-сервиса."""
+    PASSED = 'passed'
+    REJECTED = 'rejected'
+
+
 class AntifraudDecisionResponse(BaseModel):
     """Финальный ответ от антифрод-сервиса"""
-    decision: Literal['passed', 'rejected']
+    decision: AnfifraudDecision
     reasons: list[str]

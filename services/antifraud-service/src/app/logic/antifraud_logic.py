@@ -2,6 +2,7 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from app.api.antifraud.schemas import (
+    AnfifraudDecision,
     AntifraudDecisionResponse,
     PioneerCheckRequest,
     RepeaterCheckRequest,
@@ -39,14 +40,14 @@ class AntifraudService:
 
         if final_reasons:
             return AntifraudDecisionResponse(
-                decision='rejected',
+                decision=AnfifraudDecision.REJECTED,
                 reasons=final_reasons
             )
 
         await self.redis_service.increment_application_count(phone)
 
         return AntifraudDecisionResponse(
-            decision='passed',
+            decision=AnfifraudDecision.PASSED,
             reasons=[]
         )
 
