@@ -48,7 +48,8 @@
 - **data-service** — профили клиентов и история заявок.
 
 ---
-
+![Scoring demo flow](web_demo.gif)
+---
 ## Запуск
 
 **Требования:** Docker и Docker Compose.
