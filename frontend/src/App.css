@@ -1,0 +1,191 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  max-width: 560px;
+}
+
+.sidebar {
+  width: 320px;
+  padding: 1rem 1.25rem;
+  background: #16213e;
+  border-left: 1px solid #0f3460;
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  color: #a0aec0;
+}
+
+.sidebar pre,
+.sidebar .product-list {
+  font-size: 0.8rem;
+  background: #0f0f1a;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.product-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.product-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #2d2d44;
+}
+.product-list li:last-child {
+  border-bottom: none;
+}
+
+.step {
+  margin-bottom: 1.5rem;
+}
+
+.step h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem 0;
+  color: #e2e8f0;
+}
+
+.step p {
+  margin: 0 0 0.75rem 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  width: 100%;
+  max-width: 280px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  margin-bottom: 0.5rem;
+}
+
+select {
+  cursor: pointer;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+label.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+label.inline input {
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: white;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+button:hover {
+  background: #2563eb;
+}
+
+button:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #f87171;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.success {
+  color: #4ade80;
+}
+
+.flow-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.flow-badge.pioneer {
+  background: #065f46;
+  color: #6ee7b7;
+}
+
+.flow-badge.repeater {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+.result-box {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 0.75rem;
+}
+
+.result-box.accepted {
+  background: #064e3b;
+  border: 1px solid #059669;
+}
+
+.result-box.rejected {
+  background: #450a0a;
+  border: 1px solid #b91c1c;
+}
+
+.result-box .product-name {
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
