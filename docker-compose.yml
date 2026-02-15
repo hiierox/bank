@@ -128,3 +128,14 @@ services:
       DATA_SERVICE_TIMEOUT:  5
       REDIS_HOST: 'redis'
       REDIS_PORT: "6379"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - flow-service
+      - scoring-service
