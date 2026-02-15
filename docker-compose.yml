@@ -1,0 +1,130 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "8085:8080"
+
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: shift_user
+      POSTGRES_PASSWORD: shift_password
+      POSTGRES_DB: data_service
+
+  postgres_test:
+    image: postgres:17-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  data-service:
+    build:
+      context: ./services/user-data-service
+      dockerfile: Dockerfile
+    command: >
+     sh -c "python -m alembic upgrade head &&
+           python -m uvicorn app.service:app --host 0.0.0.0 --port 8080"
+    restart: unless-stopped
+    ports:
+      - "8002:8080"
+    depends_on:
+      - postgres
+      - kafka
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://shift_user:shift_password@postgres:5432/data_service"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      KAFKA_TOPIC: "scoring_results"
+      KAFKA_GROUP_ID: "data_service_group"
+
+  scoring-service:
+    build:
+      context: ./services/scoring-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports: 
+      - "8001:8080"
+    depends_on:
+      - kafka
+      - data-service
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:29092"
+      KAFKA_TOPIC: "scoring_results"
+      KAFKA_GROUP_ID: "data_service_group"
+      DATA_SERVICE_BASE_URL: "http://data-service:8080"
+      ANTIFRAUD_SERVICE_BASE_URL: "http://antifraud-service:8080"
+      ANTIFRAUD_SERVICE_TIMEOUT: 5
+    
+  flow-service:
+    build:
+      context: ./services/flow-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8080"
+    depends_on:
+      - data-service
+    
+    environment:
+      DATA_SERVICE_MAX_ATTEMPTS: 2
+      DATA_SERVICE_DELAY: 1
+      DATA_SERVICE_BASE_URL: "http://data-service:8080"
+      DATA_SERVICE_TIMEOUT:  5
+      REDIS_HOST: 'redis'
+      REDIS_PORT: "6379"
+      REDIS_TTL: 60
+
+  antifraud-service:
+    build:
+      context: ./services/antifraud-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8003:8080"
+    depends_on:
+      - redis
+      - data-service
+
+    environment:
+      DATA_SERVICE_BASE_URL: "http://data-service:8080"
+      DATA_SERVICE_TIMEOUT:  5
+      REDIS_HOST: 'redis'
+      REDIS_PORT: "6379"

@@ -1,10 +1,9 @@
 image: python:3.12-slim
-
 stages:
   - linting
   - type-checking
   - testing
-
+  - build
 
 .base:
   tags:
@@ -12,72 +11,280 @@ stages:
   before_script:
     - pip install poetry
   rules:
-    - changes:
-      - "**/*.py"
-      - ".gitlab-ci.yml"
-      - "services/**/poetry.lock"
-      when: on_success
-    - changes:
-      - "**.md"
-      when: never
     - when: never
-
 
 linting_flow:
   extends: .base
   stage: linting
   script:
-    - cd services/flow_service
+    - cd services/flow-service
     - poetry install --no-root
     - poetry run ruff check src/
-
+  rules:
+    - changes:
+        - "services/flow-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/flow-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
 
 mypy_flow:
   extends: .base
   stage: type-checking
   script:
-    - cd services/flow_service
+    - cd services/flow-service
     - poetry install --no-root
     - poetry run mypy src/
-
+  rules:
+    - changes:
+        - "services/flow-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/flow-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
 
 tests_flow:
   extends: .base
   stage: testing
   script:
-    - cd services/flow_service
+    - cd services/flow-service
     - poetry install --no-root
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
-
+  rules:
+    - changes:
+        - "services/flow-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/flow-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
 
 linting_scoring:
   extends: .base
   stage: linting
   script:
-    - cd services/scoring
+    - cd services/scoring-service
     - poetry install --no-root
     - poetry run ruff check src/
-
+  rules:
+    - changes:
+        - "services/scoring-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/scoring-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
 
 mypy_scoring:
   extends: .base
   stage: type-checking
   script:
-    - cd services/scoring
+    - cd services/scoring-service
     - poetry install --no-root
     - poetry run mypy src/
-
+  rules:
+    - changes:
+        - "services/scoring-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/scoring-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
 
 tests_scoring:
   extends: .base
   stage: testing
   script:
-    - cd services/scoring
+    - cd services/scoring-service
     - poetry install --no-root
     - poetry run pytest
   coverage: '/TOTAL.*\s+(\d+%)$/'
+  rules:
+    - changes:
+        - "services/scoring-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/scoring-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
 
+linting_data:
+  extends: .base
+  stage: linting
+  script:
+    - cd services/user-data-service
+    - poetry install --no-root
+    - poetry run ruff check src/
+  rules:
+    - changes:
+        - "services/user-data-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/user-data-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+mypy_data:
+  extends: .base
+  stage: type-checking
+  script:
+    - cd services/user-data-service
+    - poetry install --no-root
+    - poetry run mypy src/
+  rules:
+    - changes:
+        - "services/user-data-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/user-data-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+tests_data:
+  extends: .base
+  stage: testing
+  services:
+    - name: postgres:17-alpine
+      alias: postgres_test
+  variables:
+    POSTGRES_DB: test
+    POSTGRES_USER: test
+    POSTGRES_PASSWORD: test
+    DATABASE_URL: "postgresql+asyncpg://test:test@postgres_test:5432/test"
+  script:
+    - cd services/user-data-service
+    - poetry install --no-root
+    - poetry run alembic upgrade head
+    - poetry run pytest
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  rules:
+    - changes:
+        - "services/user-data-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/user-data-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+linting_antifraud:
+  extends: .base
+  stage: linting
+  script:
+    - cd services/antifraud-service
+    - poetry install --no-root
+    - poetry run ruff check src/
+  rules:
+    - changes:
+        - "services/antifraud-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/antifraud-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+mypy_antifraud:
+  extends: .base
+  stage: type-checking
+  script:
+    - cd services/antifraud-service
+    - poetry install --no-root
+    - poetry run mypy src/
+  rules:
+    - changes:
+        - "services/antifraud-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/antifraud-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+tests_antifraud:
+  extends: .base
+  stage: testing
+  script:
+    - cd services/antifraud-service
+    - poetry install --no-root
+    - poetry run pytest
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  rules:
+    - changes:
+        - "services/antifraud-service/**/*.py"
+        - ".gitlab-ci.yml"
+        - "services/antifraud-service/poetry.lock"
+      when: on_success
+    - changes:
+        - "**/*.md"
+      when: never
+    - when: never
+
+  
+.docker-build:
+  tags:
+    - shell
+  stage: build
+  image: docker:28
+  before_script:
+    - unset DOCKER_AUTH_CONFIG
+    - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+  script:
+    - docker build
+      -t "$CI_REGISTRY_IMAGE/$IMAGE_NAME:latest"
+      -f "$SERVICE_PATH/Dockerfile"
+      "$SERVICE_PATH"
+    - docker push "$CI_REGISTRY_IMAGE/$IMAGE_NAME:latest"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "$SERVICE_PATH/**/*"
+
+build_data_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/user-data-service"
+    IMAGE_NAME: "data-service"
+
+build_scoring_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/scoring-service"
+    IMAGE_NAME: "scoring-service"
+
+build_flow_selection_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/flow-service"
+    IMAGE_NAME: "flow-service"
+
+build_antifraud_service:
+  extends: .docker-build
+  variables:
+    SERVICE_PATH: "services/antifraud-service"
+    IMAGE_NAME: "antifraud-service"
 
 cache:
   key:
