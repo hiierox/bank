@@ -28,18 +28,23 @@
 | Организация проекта | Poetry, Mypy, Ruff |
 | Frontend (AI generated) | React, TypeScript, Vite |
 
-Во время курса сервисы разворачивались в облаке с помощью Kubernetes+Helm.  
-Сервисы общаются по HTTP.
+Во время курса сервисы разворачивались в облаке с помощью Kubernetes+Helm.
 
 ---
 
 ## Архитектура
 
 ```
-[Фронт] → flow-service → data-service (есть ли клиент в БД) → Redis (за списком продуктов) 
-                     ↓
-                     ↓
-[Фронт] → scoring-service → antifraud-service → Kafka → data-service (запись в БД)
+[Frontend]
+   │
+   ├─> flow-service ──> Redis / data-service
+   │
+   └─> scoring-service
+           │
+           ├─> antifraud-service ──> Redis / data-service
+           │
+           └─> Kafka ──> data-service ──> PostgreSQL
+
 ```
 
 - **flow-service** — определение типа клиента и доступных продуктов (Redis).
