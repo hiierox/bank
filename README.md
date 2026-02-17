@@ -1,10 +1,9 @@
 # Скоринг кредитных заявок
 
-Асинхронная микросервисная система антифрода и скоринга кредитных заявок
-(новые и повторные клиенты, кэш, брокер сообщений).  
+Асинхронная микросервисная система, принимающая кредитные заявки,
+выполняющая антифрод-проверки и рассчитывающая решение по заявке.
 
-Проект разработан в рамках курса от компании Koronatech с регулярным code review и обратной связью.  
-
+Проект разработан в рамках курса от компании Koronatech с регулярным code review и обратной связью.
 
 ---
 
@@ -20,10 +19,11 @@
 
 | Часть | Технологии |
 |-------|------------|
-| Backend | Python 3.12, FastAPI, asyncio, Pydantic |
+| Основа | FastAPI, asyncio |
 | Данные | PostgreSQL (SQLAlchemy), Kafka, Redis |
-| Инфраструктура | Docker Compose, Kubernetes+Helm,
-| CI/CD | GitLab CI (lint, type-check, tests, docker build) |
+| Инфраструктура | Docker Compose, Kubernetes+Helm |
+| Тестирование | pytest (unit, integration)|
+| CI/CD | GitLab CI |
 | Метрики|  OpenTelemetry, Prometheus, Grafana |
 | Организация проекта | Poetry, Mypy, Ruff |
 | Frontend (AI generated) | React, TypeScript, Vite |
